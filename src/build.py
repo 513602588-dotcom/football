@@ -75,7 +75,6 @@ def main():
         j = json.loads(open("site/data/jczq.json","r",encoding="utf-8").read())
         ms = j.get("matches") or []
         if ms:
-            import pandas as pd
             fx = pd.DataFrame(ms)
             fx["Date"] = pd.to_datetime(fx.get("time",""), errors="coerce")
             # 没日期就不筛，至少展示
