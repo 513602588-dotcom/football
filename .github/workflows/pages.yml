@@ -22,7 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # 不再 enablement，避免你之前 “Resource not accessible by integration”
       - uses: actions/configure-pages@v5
 
       - uses: actions/setup-python@v5
@@ -37,8 +36,10 @@ jobs:
       - name: Export JCZQ (JJ)
         run: python -m src.collect.jj_export
 
-      - name: Build
-        run: python -m src.build      - name: Upload artifact
+      - name: Build site
+        run: python -m src.build
+
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: site
