@@ -29,7 +29,7 @@ def calc(p_model: float, odds: float, p_fair: float, pick: str) -> BestBet:
     return BestBet(pick, p_model, odds, p_fair, ev, k, p_model - p_fair)
 
 def score(best: BestBet) -> float:
-    # 100分：EV 55 + 概率 25 + 稳定性 20（防止小概率高赔“假香”）
+    # 100分：EV 55 + 概率 25 + 稳定性 20
     s = 0.0
     s += max(0.0, min(55.0, best.ev * 120.0))
     s += max(0.0, min(25.0, best.p_model * 25.0))

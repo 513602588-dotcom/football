@@ -91,7 +91,6 @@ def predict(models: FitModels, home: str, away: str) -> dict:
         "p_draw": p_draw,
         "p_away": p_away,
         "most_likely_score": f"{best[0]}-{best[1]}",
-        "p_most_likely_score": float(mat[best]),
         "elo_diff": float(elo_diff),
         "p_over25": float(p_over25),
         "p_btts": float(p_btts),

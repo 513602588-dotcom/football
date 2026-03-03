@@ -22,10 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      # 不再 enablement，避免你之前 “Resource not accessible by integration”
+      - uses: actions/configure-pages@v5
 
       - uses: actions/setup-python@v5
         with:
@@ -39,6 +37,9 @@ jobs:
       - name: Build
         run: python -m src.build
 
+
+      - name: Export JCZQ (wencai51)
+        run: python -m src.collect.wencai51_export
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:

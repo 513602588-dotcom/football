@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "generated_at_utc": "2026-03-03 01:02:13 UTC",
+    "source": "m.wencai51.cn bonusCalculator",
+    "mt": "e83cf860-2d84-4561-969e-e61eae6527e4",
+    "api_url": "PASTE_YOUR_REAL_JSON_API_URL_HERE",
+    "error": "Invalid URL 'PASTE_YOUR_REAL_JSON_API_URL_HERE?mt=e83cf860-2d84-4561-969e-e61eae6527e4': No scheme supplied. Perhaps you meant https://PASTE_YOUR_REAL_JSON_API_URL_HERE?mt=e83cf860-2d84-4561-969e-e61eae6527e4?",
+    "count": 0
+  },
+  "matches": []
+}

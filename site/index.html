@@ -11,12 +11,11 @@
   <div class="hero-top">
     <div>
       <div class="brand">Footy Predict Pro</div>
-      <div class="sub">Poisson+Elo · EV/Kelly · Backtest · GitHub Pages</div>
+      <div class="sub">Poisson+Elo · RandomForest · MLP · EV/Kelly · Backtest · GitHub Pages</div>
     </div>
     <button id="theme" class="btn">🌙/☀️</button>
   </div>
   <div id="meta" class="meta">加载中…</div>
-
   <div class="cards">
     <div class="card"><div class="k">未来赛程</div><div id="k_fx" class="v">-</div></div>
     <div class="card"><div class="k">Top Picks</div><div id="k_top" class="v">-</div></div>
@@ -28,7 +27,7 @@
 <main class="wrap">
   <section>
     <h2>Top Picks</h2>
-    <div class="hint">只有赛程行带到赔率列时才会算 EV/Kelly。</div>
+    <div class="hint">只有行里带到赔率列时才算 EV/Kelly；否则只展示模型概率/比分。</div>
     <div class="table-wrap">
       <table id="top">
         <thead><tr>
@@ -52,6 +51,18 @@
       </table>
     </div>
   </section>
+<section class="wrap">
+  <h2>竞彩数据（wencai51）</h2>
+  <div class="hint">如果为空：说明接口URL没填对或站点在 Runner 上不可达。</div>
+  <div class="table-wrap">
+    <table id="jczq">
+      <thead><tr>
+        <th>联赛</th><th>时间</th><th>主队</th><th>客队</th><th>胜</th><th>平</th><th>负</th><th>让球</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
 </main>
 
 <footer class="wrap footer">仅供学习研究，不构成投注建议。</footer>

@@ -17,7 +17,7 @@ async function main(){
   const data = await res.json();
 
   document.getElementById("meta").textContent =
-    `更新时间(UTC)：${data.meta.generated_at_utc} ｜ Python ${data.meta.python} ｜ 赛季：${data.meta.seasons_used.join(", ")}`;
+    `更新时间(UTC)：${data.meta.generated_at_utc} ｜ Python ${data.meta.python} ｜ 赛季：${data.meta.seasons_used.join(", ")} ｜ 融合：PE ${data.meta.fusion.W_PE} + ML ${data.meta.fusion.W_ML}（ML=${data.meta.fusion.ml_enabled}）`;
 
   document.getElementById("k_fx").textContent = String(data.stats.fixtures ?? "-");
   document.getElementById("k_top").textContent = String(data.stats.top ?? "-");
@@ -57,3 +57,33 @@ async function main(){
   `).join("");
 }
 main().catch(e=>{ document.getElementById("meta").textContent="加载失败："+e; });
+
+async function renderJCZQ(){
+  try{
+    const res = await fetch("data/jczq.json", {cache:"no-store"});
+    const data = await res.json();
+    const tb = document.querySelector("#jczq tbody");
+    if(!tb) return;
+    const ms = data.matches || [];
+    if(ms.length === 0){
+      tb.innerHTML = `<tr><td colspan="8">暂无数据（${data.meta?.error || "可能接口未配置/不可访问"}）</td></tr>`;
+      return;
+    }
+    tb.innerHTML = ms.slice(0,200).map(m=>`
+      <tr>
+        <td>${m.league||""}</td>
+        <td>${m.time||""}</td>
+        <td>${m.home||""}</td>
+        <td>${m.away||""}</td>
+        <td>${m.odds_win ?? "-"}</td>
+        <td>${m.odds_draw ?? "-"}</td>
+        <td>${m.odds_lose ?? "-"}</td>
+        <td>${m.handicap ?? "-"}</td>
+      </tr>
+    `).join("");
+  }catch(e){
+    const tb = document.querySelector("#jczq tbody");
+    if(tb) tb.innerHTML = `<tr><td colspan="8">加载失败：${e}</td></tr>`;
+  }
+}
+renderJCZQ();

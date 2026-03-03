@@ -1,7 +1,7 @@
 :root{
   --bg:#0b0f17; --panel:#121a27; --panel2:#0f1623;
   --txt:#e8eefc; --muted:#9fb1d1; --line:#24324a;
-  --accent:#7aa2ff; --good:#32d583; --warn:#fdb022; --bad:#f97066;
+  --accent:#7aa2ff; --good:#32d583; --warn:#fdb022;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Noto Sans CJK SC",Arial;
 }
 html.light{
