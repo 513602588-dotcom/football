@@ -37,7 +37,7 @@ jobs:
         run: python -m src.collect.jczq_500
 
       - name: Run Prediction
-        run: python -m src.predict
+        run: python src/predict.py
 
       - name: Build site
         run: python -m src.build
