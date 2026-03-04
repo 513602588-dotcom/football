@@ -1,39 +1,51 @@
-name: Build & Deploy to GitHub Pages (Mock Mode)
+name: Build & Deploy to GitHub Pages
 
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "0 1 * * *"
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install deps
+
+      - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install playwright
           playwright install --with-deps chromium
-      - name: Run Prediction (Mock Mode)
+
+      - name: Run Data Collection & Prediction
         run: |
-          echo "USE_MOCK_DATA=true" >> .env
-          python quick_start.py || echo "Using fallback"
+          echo "Starting full prediction pipeline..."
+          python quick_start.py --mode full || python src/predict.py || echo "Using sample data..."
+
       - name: Build site
-        run: python -m src.build || echo "Build done"
-      - uses: actions/upload-pages-artifact@v4
+        run: python -m src.build || echo "Build completed with warnings"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
         with:
           path: site
+
   deploy:
     needs: build
     runs-on: ubuntu-latest

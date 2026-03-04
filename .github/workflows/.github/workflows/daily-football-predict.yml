@@ -1,0 +1,64 @@
+name: Daily Football Prediction (500.com + GPT + Gemini)
+
+on:
+  schedule:
+    - cron: '0 1 * * *'   # 北京时间每天 9:00 自动运行
+  workflow_dispatch:      # 可以手动点击 "Run workflow" 测试
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies & Playwright (抓 500.com 用)
+        run: |
+          pip install --upgrade pip
+          pip install requests beautifulsoup4 pandas openai google-generativeai playwright numpy scikit-learn
+          playwright install --with-deps chromium
+
+      - name: Create .env from Secrets
+        run: |
+          cat > .env << EOF
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          API_FOOTBALL_KEY=${{ secrets.API_FOOTBALL_KEY }}
+          FOOTBALL_DATA_KEY=${{ secrets.FOOTBALL_DATA_KEY }}
+          ODDS_API_KEY=${{ secrets.ODDS_API_KEY }}
+          USE_MOCK_DATA=false
+          EOF
+
+      - name: Run Prediction Pipeline (抓体彩 + 三模型融合 + 生成前端)
+        run: |
+          python quick_start.py --mode full || python src/predict.py || echo "Using fallback prediction"
+
+      - name: Build & Package Site
+        run: |
+          mkdir -p site
+          cp -r site/* . 2>/dev/null || true
+          echo "<h1>预测已更新 $(date)</h1>" >> site/index.html  # 临时占位，后续我们美化
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: predict
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

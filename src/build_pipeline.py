@@ -13,6 +13,7 @@ from typing import Dict, List, Tuple
 
 # 导入本地模块
 from src.data.api_integrations import create_data_aggregator
+from src.collect.utils import now_cn_date
 from src.data.feature_engineering import FeatureEngineer
 from src.data.data_collector_enhanced import (
     DataCollector, HistoricalDataLoader, CacheManager
@@ -62,6 +63,24 @@ class FootballPredictionPipeline:
         
         logger.info("Pipeline initialized successfully")
     
+    def stage_0_scrape_external_data(self) -> None:
+        """阶段0：运行所有外部爬虫，更新site/data目录。
+
+        仅在需要的时候调用，任何错误均会被捕获并记录，但不会停止主流程。
+        """
+        logger.info("🕷️ Stage 0: Running external scrapers (500 & okooo)")
+        try:
+            from src.collect import export_500, export_okooo
+            # 抓取最新1天500网数据
+            export_500(days=1)
+            # 抓取最近3天澳客数据作为示例
+            # 注意：export_okooo 接受 start_date, days, version
+            today = now_cn_date()
+            export_okooo(start_date=today, days=3, version="full")
+            logger.info("✅ External scrapers completed")
+        except Exception as e:
+            logger.warning(f"External scrapers failed: {e}")
+
     def stage_1_collect_data(self, competitions: List[str] = None) -> pd.DataFrame:
         """
         阶段1：数据收集
@@ -75,7 +94,7 @@ class FootballPredictionPipeline:
         if competitions is None:
             competitions = ['PL', 'SA', 'BL1', 'FR1', 'IT1']
         
-        logger.info("📊 Stage 1: Data Collection")
+        logger.info("📊 Stage 1: Data Collection (API & cache)")
         all_matches = []
         
         for comp in competitions:
@@ -368,6 +387,7 @@ class FootballPredictionPipeline:
     
     def run_full_pipeline(
         self,
+        run_scrapers: bool = False,
         stage_load_historical: bool = True,
         stage_train_models: bool = False,
         competitions: List[str] = None
@@ -394,6 +414,11 @@ class FootballPredictionPipeline:
         }
         
         try:
+            # Stage 0: 运行爬虫（可选）
+            if run_scrapers:
+                self.stage_0_scrape_external_data()
+                results['stages_completed'].append('external_scrape')
+
             # Stage 1: 收集数据
             matches_df = self.stage_1_collect_data(competitions)
             results['stages_completed'].append('data_collection')
@@ -459,7 +484,8 @@ def main():
     
     # 运行完整管道
     results = pipeline.run_full_pipeline(
-        stage_load_historical=True,  # 使用历史数据提高特征质量
+        run_scrapers=True,            # 先刷新爬虫数据
+        stage_load_historical=True,   # 使用历史数据提高特征质量
         stage_train_models=False,     # 如果有足够数据可设置为True
         competitions=['PL', 'SA', 'BL1']  # 主要联赛
     )

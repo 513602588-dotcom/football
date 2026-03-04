@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 import requests
 from bs4 import BeautifulSoup
 
+from .utils import decode_response
+
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
 
 HEADERS = {
@@ -27,9 +29,8 @@ def _to_float(x: str) -> Optional[float]:
 def _fetch_one_day(date_str: str) -> List[Dict[str, Any]]:
     url = f"https://trade.500.com/jczq/?date={date_str}"
     r = requests.get(url, headers=HEADERS, timeout=20)
-    enc = r.apparent_encoding or "gbk"
-    r.encoding = enc
-    soup = BeautifulSoup(r.text, "html.parser")
+    html = decode_response(r)
+    soup = BeautifulSoup(html, "html.parser")
 
     matches: List[Dict[str, Any]] = []
     for row in soup.find_all("tr"):

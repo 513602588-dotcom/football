@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at_utc": "2026-03-04 09:32:47 UTC",
+    "generated_at_utc": "2026-03-04 15:30:24 UTC",
     "source": "trade.500.com/jczq",
     "days": 1,
     "count": 19
@@ -27,9 +27,9 @@
       "home": "首尔FC",
       "away": "神户胜利",
       "handicap": "单关0+1",
-      "odds_win": 3.45,
-      "odds_draw": 2.93,
-      "odds_lose": 2.01,
+      "odds_win": 3.37,
+      "odds_draw": 2.9,
+      "odds_lose": 2.05,
       "source": "trade.500.com/jczq"
     },
     {
@@ -66,9 +66,9 @@
       "home": "柔佛",
       "away": "广岛三箭",
       "handicap": "单关0+1",
-      "odds_win": 2.57,
-      "odds_draw": 3.12,
-      "odds_lose": 2.38,
+      "odds_win": 2.4,
+      "odds_draw": 3.0,
+      "odds_lose": 2.64,
       "source": "trade.500.com/jczq"
     },
     {
@@ -79,9 +79,9 @@
       "home": "巴列卡诺",
       "away": "奥维耶多",
       "handicap": "0-1",
-      "odds_win": 1.56,
+      "odds_win": 1.55,
       "odds_draw": 3.35,
-      "odds_lose": 5.3,
+      "odds_lose": 5.37,
       "source": "trade.500.com/jczq"
     },
     {
@@ -105,9 +105,9 @@
       "home": "富勒姆",
       "away": "西汉姆联",
       "handicap": "0-1",
-      "odds_win": 1.81,
+      "odds_win": 1.93,
       "odds_draw": 3.45,
-      "odds_lose": 3.48,
+      "odds_lose": 3.12,
       "source": "trade.500.com/jczq"
     },
     {
@@ -118,9 +118,9 @@
       "home": "维拉",
       "away": "切尔西",
       "handicap": "单关0-1",
-      "odds_win": 2.49,
-      "odds_draw": 3.4,
-      "odds_lose": 2.31,
+      "odds_win": 2.65,
+      "odds_draw": 3.35,
+      "odds_lose": 2.21,
       "source": "trade.500.com/jczq"
     },
     {
@@ -131,9 +131,9 @@
       "home": "汉堡",
       "away": "勒沃库森",
       "handicap": "0+1",
-      "odds_win": 3.48,
-      "odds_draw": 3.5,
-      "odds_lose": 1.8,
+      "odds_win": 3.55,
+      "odds_draw": 3.58,
+      "odds_lose": 1.76,
       "source": "trade.500.com/jczq"
     },
     {
@@ -145,8 +145,8 @@
       "away": "亚特兰大",
       "handicap": "0+1",
       "odds_win": 3.2,
-      "odds_draw": 3.05,
-      "odds_lose": 2.05,
+      "odds_draw": 2.9,
+      "odds_lose": 2.12,
       "source": "trade.500.com/jczq"
     },
     {
@@ -157,9 +157,9 @@
       "home": "皇家社会",
       "away": "毕尔巴鄂",
       "handicap": "0-1",
-      "odds_win": 2.02,
-      "odds_draw": 3.15,
-      "odds_lose": 3.16,
+      "odds_win": 2.08,
+      "odds_draw": 3.02,
+      "odds_lose": 3.15,
       "source": "trade.500.com/jczq"
     },
     {
@@ -183,9 +183,9 @@
       "home": "纽卡斯尔",
       "away": "曼联",
       "handicap": "单关0+1",
-      "odds_win": 2.48,
+      "odds_win": 2.53,
       "odds_draw": 3.5,
-      "odds_lose": 2.27,
+      "odds_lose": 2.23,
       "source": "trade.500.com/jczq"
     },
     {
@@ -235,9 +235,9 @@
       "home": "热刺",
       "away": "水晶宫",
       "handicap": "单关0-1",
-      "odds_win": 2.25,
+      "odds_win": 2.2,
       "odds_draw": 3.15,
-      "odds_lose": 2.72,
+      "odds_lose": 2.8,
       "source": "trade.500.com/jczq"
     },
     {

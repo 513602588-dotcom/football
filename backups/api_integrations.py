@@ -35,8 +35,6 @@ class FootballDataAPI:
         获取指定联赛的赛程
         PL=英超, SA=西甲, BL1=德甲, FR1=法甲, IT1=意甲
         """
-        if not self.api_key:
-            return _get_mock_matches(competition_code)
         try:
             params = {
                 "status": status,
@@ -209,21 +207,3 @@ class DataAggregator:
 def create_data_aggregator(football_api_key: str = None, odds_api_key: str = None) -> DataAggregator:
     """创建数据聚合器实例"""
     return DataAggregator(football_api_key, odds_api_key)
-
-# ====================== 【新增】Mock 模式自动切换 ======================
-SAMPLE_MATCHES = [
-    {"id": 1001, "utcDate": "2026-03-08T15:00:00Z", "competition": {"code": "PL"}, "homeTeam": {"name": "曼城"}, "awayTeam": {"name": "阿森纳"}, "status": "SCHEDULED"},
-    {"id": 1002, "utcDate": "2026-03-08T17:30:00Z", "competition": {"code": "PL"}, "homeTeam": {"name": "利物浦"}, "awayTeam": {"name": "曼联"}, "status": "SCHEDULED"},
-    {"id": 1003, "utcDate": "2026-03-09T14:00:00Z", "competition": {"code": "SA"}, "homeTeam": {"name": "尤文图斯"}, "awayTeam": {"name": "国际米兰"}, "status": "SCHEDULED"},
-    {"id": 1004, "utcDate": "2026-03-09T19:45:00Z", "competition": {"code": "BL1"}, "homeTeam": {"name": "拜仁慕尼黑"}, "awayTeam": {"name": "多特蒙德"}, "status": "SCHEDULED"},
-    {"id": 1005, "utcDate": "2026-03-10T20:00:00Z", "competition": {"code": "FR1"}, "homeTeam": {"name": "巴黎圣日耳曼"}, "awayTeam": {"name": "马赛"}, "status": "SCHEDULED"},
-    {"id": 1006, "utcDate": "2026-03-08T18:00:00Z", "competition": {"code": "PL"}, "homeTeam": {"name": "切尔西"}, "awayTeam": {"name": "热刺"}, "status": "SCHEDULED"},
-]
-
-def _get_mock_matches(competition_code):
-    """无 Key 时返回模拟赛程"""
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info(f"🔄 无 API Key → 使用模拟数据（{len(SAMPLE_MATCHES)} 场）")
-    filtered = [m for m in SAMPLE_MATCHES if m["competition"]["code"] == competition_code]
-    return filtered or SAMPLE_MATCHES[:5]

@@ -1,40 +1,25 @@
 import json
 import random
 import time
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import requests
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-    "Referer": "https://www.okooo.cn/",
-}
+from .utils import now_cn_date, to_float, safe_read_html, HEADERS as BASE_HEADERS, decode_response
 
-def _now_cn_date() -> str:
-    # 以中国日期为准
-    dt = datetime.now(timezone.utc) + timedelta(hours=8)
-    return dt.strftime("%Y-%m-%d")
+# 特定来源额外Referer
+HEADERS = {**BASE_HEADERS, "Referer": "https://www.okooo.cn/"}
 
-def _safe_read_html(html: str) -> List[pd.DataFrame]:
-    # pd.read_html 偶尔会爆，包一层
-    try:
-        return pd.read_html(html)
-    except Exception:
-        return []
+# _now_cn_date 已迁移到 utils.now_cn_date
 
-def _to_float(x) -> Optional[float]:
-    try:
-        if x is None: return None
-        s = str(x).strip()
-        if not s: return None
-        v = float(s)
-        return v if v > 1 else None
-    except:
-        return None
+
+# _safe_read_html 已迁移到 utils.safe_read_html
+
+
+# _to_float 已迁移到 utils.to_float
 
 def _guess_cols(df: pd.DataFrame) -> Dict[str, str]:
     """
@@ -76,15 +61,16 @@ def _normalize(df: pd.DataFrame, date_str: str, source: str) -> pd.DataFrame:
     out["away"]   = df[m["away"]] if m["away"] in df.columns else ""
     out["score"]  = df[m["score"]] if m["score"] in df.columns else ""
 
-    out["odds_win"]  = df[m["sp3"]].map(_to_float) if m["sp3"] in df.columns else None
-    out["odds_draw"] = df[m["sp1"]].map(_to_float) if m["sp1"] in df.columns else None
-    out["odds_lose"] = df[m["sp0"]].map(_to_float) if m["sp0"] in df.columns else None
+    out["odds_win"]  = df[m["sp3"]].map(to_float) if m["sp3"] in df.columns else None
+    out["odds_draw"] = df[m["sp1"]].map(to_float) if m["sp1"] in df.columns else None
+    out["odds_lose"] = df[m["sp0"]].map(to_float) if m["sp0"] in df.columns else None
 
     # 简单清洗：丢掉没主客队的行
     out = out[(out["home"].astype(str).str.len() > 0) & (out["away"].astype(str).str.len() > 0)]
     return out.reset_index(drop=True)
 
 def fetch_day(date_str: str, version: str = "full") -> Optional[pd.DataFrame]:
+    """抓取指定日期的澳客历史数据，返回已规范化的DataFrame。"""
     if version == "full":
         url = f"https://www.okooo.cn/jingcai/{date_str}/"
         src = "okooo_full"
@@ -93,17 +79,14 @@ def fetch_day(date_str: str, version: str = "full") -> Optional[pd.DataFrame]:
         src = "okooo_simple"
 
     r = requests.get(url, headers=HEADERS, timeout=20)
-    enc = r.apparent_encoding or "gbk"
-    r.encoding = enc
-    tables = _safe_read_html(r.text)
+    html = decode_response(r)
+    tables = safe_read_html(html)
     if not tables:
         return None
 
-    # 默认取第一个表；如果第一个太小，试试最大的那个
     df0 = tables[0]
     best = max(tables, key=lambda d: len(d), default=df0)
-    norm = _normalize(best, date_str=date_str, source=src)
-    return norm
+    return _normalize(best, date_str=date_str, source=src)
 
 def export_history(start_date: str, days: int = 7, version: str = "full") -> pd.DataFrame:
     start = datetime.strptime(start_date, "%Y-%m-%d")
@@ -128,7 +111,7 @@ def export_history(start_date: str, days: int = 7, version: str = "full") -> pd.
 def main():
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--start", default=_now_cn_date(), help="YYYY-MM-DD (China date)")
+    ap.add_argument("--start", default=now_cn_date(), help="YYYY-MM-DD (China date)")
     ap.add_argument("--days", type=int, default=7)
     ap.add_argument("--version", choices=["full","simple"], default="full")
     args = ap.parse_args()

@@ -1,5 +1,4 @@
 import json
-import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -7,61 +6,47 @@ from typing import Dict, List, Optional
 import requests
 from bs4 import BeautifulSoup
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Referer": "https://trade.500.com/",
-}
+from .utils import to_float, HEADERS as BASE_HEADERS, decode_response
 
-def _to_float(x: str) -> Optional[float]:
-    try:
-        x = (x or "").strip()
-        if not x:
-            return None
-        v = float(x)
-        return v if v > 1 else None
-    except:
-        return None
+# 针对500网的额外请求头
+HEADERS = {**BASE_HEADERS, "Referer": "https://trade.500.com/"}
+
+# 为了保持旧接口兼容，保留名称
+_to_float = to_float
 
 def fetch_one_day(date_str: str) -> List[Dict]:
+    """抓取指定日期的500网竞彩数据，返回字典列表。"""
     url = f"https://trade.500.com/jczq/?date={date_str}"
     r = requests.get(url, headers=HEADERS, timeout=20)
-    enc = r.apparent_encoding or "gbk"
-    r.encoding = enc
-    soup = BeautifulSoup(r.text, "html.parser")
+    # the site is served in gbk/gb2312; ``decode_response`` takes care of
+    # forcing that encoding and falling back gracefully.
+    html = decode_response(r)
+    soup = BeautifulSoup(html, "html.parser")
 
-    matches = []
-    rows = soup.find_all("tr")
-    for row in rows:
+    matches: List[Dict] = []
+    for row in soup.find_all("tr"):
         tds = row.find_all("td")
-        # 页面结构可能变：这里用“至少 6 列”做兜底
         if len(tds) < 6:
             continue
 
         match_num = tds[0].get_text(strip=True)
-        # match_num 通常长这样：周二002 / 001
         if not match_num or len(match_num) > 10:
             continue
 
         league_a = tds[1].find("a")
         league = league_a.get_text(strip=True) if league_a else tds[1].get_text(strip=True)
-
         kick_time = tds[2].get_text(strip=True)
 
-        # 主客队通常在第 4 列（index 3）
         team_as = tds[3].find_all("a")
-        home = team_as[0].get_text(strip=True) if len(team_as) >= 1 else tds[3].get_text(strip=True)
-        away = team_as[-1].get_text(strip=True) if len(team_as) >= 2 else ""
+        home = team_as[0].get_text(strip=True) if team_as else tds[3].get_text(strip=True)
+        away = team_as[-1].get_text(strip=True) if len(team_as) > 1 else ""
 
         handicap = tds[4].get_text(strip=True)
-
-        sp_td = tds[5]
-        sp_spans = sp_td.find_all("span")
+        sp_spans = tds[5].find_all("span")
         sp_win = sp_spans[0].get_text(strip=True) if len(sp_spans) > 0 else ""
         sp_draw = sp_spans[1].get_text(strip=True) if len(sp_spans) > 1 else ""
         sp_lose = sp_spans[2].get_text(strip=True) if len(sp_spans) > 2 else ""
 
-        # 统一成我们站用的字段
         matches.append({
             "date": date_str,
             "match": match_num,
@@ -73,12 +58,15 @@ def fetch_one_day(date_str: str) -> List[Dict]:
             "odds_win": _to_float(sp_win),
             "odds_draw": _to_float(sp_draw),
             "odds_lose": _to_float(sp_lose),
-            "source": "trade.500.com/jczq"
+            "source": "trade.500.com/jczq",
         })
     return matches
 
 def export(days: int = 1) -> Dict:
-    today = datetime.now(timezone.utc) + timedelta(hours=8)  # 按中国日期
+    # 调用工具函数获取中国时区的今日日期
+    # 按中国日期，利用工具函数获取当前日期字符串并解析
+    from .utils import now_cn_date
+    today = datetime.strptime(now_cn_date(), "%Y-%m-%d")
     all_matches: List[Dict] = []
     for i in range(days):
         d = (today - timedelta(days=i)).strftime("%Y-%m-%d")

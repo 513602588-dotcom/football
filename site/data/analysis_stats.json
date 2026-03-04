@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-03-04T15:30:07.175055",
+  "total_predictions": 0,
+  "top_picks_count": 0,
+  "avg_confidence": 0,
+  "avg_win_probability": 0,
+  "avg_expected_value": 0,
+  "max_expected_value": 0,
+  "model_weights": {
+    "poisson": "20%",
+    "xgboost": "25%",
+    "dnn": "25%",
+    "elo": "15%",
+    "xg_model": "10%",
+    "home_bias": "5%"
+  },
+  "data_sources": [
+    "Football-data.org",
+    "Understat (xG)",
+    "Sofascore",
+    "The Odds API",
+    "Historical picks"
+  ]
+}

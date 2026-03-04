@@ -185,8 +185,8 @@ python -m pytest tests/test_collectors.py tests/test_pipeline.py -q
 
 ## 📞 支持
 
-- 🐛 发现bug? [提交Issue](https://github.com/Bosun4/Foot/issues)
-- 💡 有建议? [讨论](https://github.com/Bosun4/Foot/discussions)
+- 🐛 发现bug? [提交Issue](https://github.com/your-repo/issues)
+- 💡 有建议? [讨论](https://github.com/your-repo/discussions)
 - 📖 需要帮助? 查看[常见问题](docs/FAQ.md)
 
 ## ⚠️ 免责声明
