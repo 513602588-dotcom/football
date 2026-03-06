@@ -88,9 +88,11 @@ async function renderPicks() {
   const llm = meta.llm || {};
   const usage = llm.usage || {};
   const llmLine = `LLM状态 OpenAI:${usage.openai || 0} Gemini:${usage.gemini || 0} 双模型:${usage.both || 0} 回退:${usage.fallback || 0}`;
+  const apiUsage = meta.api_usage || {};
+  const apiLine = `API状态 Foot:${apiUsage.api_football_enabled ? "ON" : "OFF"} FD:${apiUsage.football_data_enabled ? "ON" : "OFF"} Odds:${apiUsage.odds_api_enabled ? "ON" : "OFF"}`;
   const scheduleLine = document.querySelector(".schedule");
   if (scheduleLine) {
-    scheduleLine.textContent = `${scheduleLine.textContent} | ${llmLine}`;
+    scheduleLine.textContent = `${scheduleLine.textContent} | ${apiLine} | ${llmLine}`;
   }
 
   document.getElementById("k_fx").textContent = String(stats.fixtures ?? 0);

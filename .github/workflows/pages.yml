@@ -34,13 +34,13 @@ jobs:
           API_FOOTBALL_KEY=${{ secrets.API_FOOTBALL_KEY }}
           FOOTBALL_DATA_KEY=${{ secrets.FOOTBALL_DATA_KEY }}
           ODDS_API_KEY=${{ secrets.ODDS_API_KEY }}
-          OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}
+          OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL || 'https://nan.meta-api.vip/v1' }}
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL=${{ secrets.OPENAI_MODEL }}
-          GEMINI_BASE_URL=${{ secrets.GEMINI_BASE_URL }}
+          GEMINI_BASE_URL=${{ secrets.GEMINI_BASE_URL || 'https://once.novai.su/v1' }}
           GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL=${{ secrets.GEMINI_MODEL }}
-          ALLOW_GLOBAL_FIXTURE_FALLBACK=false
+          ALLOW_GLOBAL_FIXTURE_FALLBACK=true
           EOF
 
       - name: Run Daily JCZQ Pipeline

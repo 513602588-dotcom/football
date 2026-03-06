@@ -60,6 +60,22 @@ class LLMConfig:
     gemini_model: str
 
 
+def env_value(*keys: str, default: str = "") -> str:
+    for k in keys:
+        v = os.getenv(k, "").strip()
+        if v:
+            return v
+    return default
+
+
+def valid_key(v: str) -> bool:
+    if not v:
+        return False
+    lv = v.lower()
+    bad = ["your_", "_here", "changeme", "example", "placeholder"]
+    return not any(x in lv for x in bad)
+
+
 def utc_now_str() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
@@ -140,11 +156,11 @@ def _norm_team(name: str) -> str:
 
 
 def fetch_api_sports_fixtures(start: datetime, end: datetime) -> List[Dict[str, object]]:
-    key = os.getenv("API_FOOTBALL_KEY", "").strip()
-    if not key:
+    key = env_value("API_FOOTBALL_KEY", "API_FOOTBALL_API_KEY")
+    if not valid_key(key):
         return []
 
-    base = os.getenv("API_FOOTBALL_BASE", "https://v3.football.api-sports.io")
+    base = env_value("API_FOOTBALL_BASE", default="https://v3.football.api-sports.io")
     out: List[Dict[str, object]] = []
     day = start
     while day <= end:
@@ -185,8 +201,8 @@ def fetch_api_sports_fixtures(start: datetime, end: datetime) -> List[Dict[str, 
 
 
 def fetch_football_data_fixtures(start: datetime, end: datetime) -> List[Dict[str, object]]:
-    key = os.getenv("FOOTBALL_DATA_KEY", "").strip()
-    if not key:
+    key = env_value("FOOTBALL_DATA_KEY", "FOOTBALL_DATA_API_KEY")
+    if not valid_key(key):
         return []
 
     url = "https://api.football-data.org/v4/matches"
@@ -244,8 +260,8 @@ def fetch_fallback_fixtures() -> List[Dict[str, object]]:
 
 
 def build_odds_lookup() -> Dict[Tuple[str, str], Tuple[Optional[float], Optional[float], Optional[float]]]:
-    key = os.getenv("ODDS_API_KEY", "").strip()
-    if not key:
+    key = env_value("ODDS_API_KEY", "THE_ODDS_API_KEY")
+    if not valid_key(key):
         return {}
 
     lookup: Dict[Tuple[str, str], Tuple[Optional[float], Optional[float], Optional[float]]] = {}
@@ -596,20 +612,15 @@ def write_outputs(payload: Dict[str, object]) -> None:
 
 
 def load_llm_config() -> LLMConfig:
-    def first_env(*keys: str, default: str = "") -> str:
-        for k in keys:
-            v = os.getenv(k, "").strip()
-            if v:
-                return v
-        return default
-
+    openai_key = env_value("OPENAI_API_KEY", "OPENAI_KEY", "OPENAI_RELAY_KEY")
+    gemini_key = env_value("GEMINI_API_KEY", "GEMINI_KEY", "GEMINI_RELAY_KEY")
     return LLMConfig(
-        openai_base=first_env("OPENAI_BASE_URL", "OPENAI_API_BASE", default="https://nan.meta-api.vip/v1"),
-        openai_key=first_env("OPENAI_API_KEY", "OPENAI_KEY"),
-        openai_model=first_env("OPENAI_MODEL", default="gpt-4o-mini"),
-        gemini_base=first_env("GEMINI_BASE_URL", "GEMINI_API_BASE", default="https://once.novai.su/v1"),
-        gemini_key=first_env("GEMINI_API_KEY", "GEMINI_KEY"),
-        gemini_model=first_env("GEMINI_MODEL", default="gemini-2.0-flash"),
+        openai_base=env_value("OPENAI_BASE_URL", "OPENAI_API_BASE", "OPENAI_RELAY_URL", default="https://nan.meta-api.vip/v1"),
+        openai_key=openai_key if valid_key(openai_key) else "",
+        openai_model=env_value("OPENAI_MODEL", default="gpt-4o-mini"),
+        gemini_base=env_value("GEMINI_BASE_URL", "GEMINI_API_BASE", "GEMINI_RELAY_URL", default="https://once.novai.su/v1"),
+        gemini_key=gemini_key if valid_key(gemini_key) else "",
+        gemini_model=env_value("GEMINI_MODEL", default="gemini-2.0-flash"),
     )
 
 
@@ -617,6 +628,23 @@ def run() -> int:
     load_dotenv()
     Path("site").mkdir(parents=True, exist_ok=True)
     Path("site/.nojekyll").write_text("", encoding="utf-8")
+
+    api_football_on = valid_key(env_value("API_FOOTBALL_KEY", "API_FOOTBALL_API_KEY"))
+    football_data_on = valid_key(env_value("FOOTBALL_DATA_KEY", "FOOTBALL_DATA_API_KEY"))
+    odds_api_on = valid_key(env_value("ODDS_API_KEY", "THE_ODDS_API_KEY"))
+    llm_openai_on = valid_key(env_value("OPENAI_API_KEY", "OPENAI_KEY", "OPENAI_RELAY_KEY"))
+    llm_gemini_on = valid_key(env_value("GEMINI_API_KEY", "GEMINI_KEY", "GEMINI_RELAY_KEY"))
+
+    print(
+        "[env] api_football=%s football_data=%s odds_api=%s openai=%s gemini=%s"
+        % (
+            api_football_on,
+            football_data_on,
+            odds_api_on,
+            llm_openai_on,
+            llm_gemini_on,
+        )
+    )
 
     print(f"[1/4] crawl start {utc_now_str()}")
     try:
@@ -671,9 +699,10 @@ def run() -> int:
     llm_cfg = load_llm_config()
     payload = build_payload(rows, bt, llm_cfg)
     payload.setdefault("meta", {})["api_usage"] = {
-        "api_football_enabled": bool(os.getenv("API_FOOTBALL_KEY", "").strip()),
-        "football_data_enabled": bool(os.getenv("FOOTBALL_DATA_KEY", "").strip()),
-        "odds_api_enabled": bool(os.getenv("ODDS_API_KEY", "").strip()),
+        "api_football_enabled": api_football_on,
+        "football_data_enabled": football_data_on,
+        "odds_api_enabled": odds_api_on,
+        "allow_global_fixture_fallback": os.getenv("ALLOW_GLOBAL_FIXTURE_FALLBACK", "false").lower() == "true",
     }
     write_outputs(payload)
 
