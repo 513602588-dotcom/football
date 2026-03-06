@@ -28,6 +28,15 @@ function modelProbCell(x) {
   return `${one("PE", x.pe_p)}${one("ML", x.ml_p)}${one("BM", x.bm_p)}` || "-";
 }
 
+function reasonBlock(x) {
+  const rs = x.reasons || {};
+  const base = rs.base || x.why || "-";
+  const gpt = rs.gpt ? `<div><strong>GPT:</strong> ${rs.gpt}</div>` : "";
+  const gem = rs.gemini ? `<div><strong>Gemini:</strong> ${rs.gemini}</div>` : "";
+  const fb = rs.fallback ? `<div><strong>Fallback:</strong> ${rs.fallback}</div>` : "";
+  return `<div class="reason-block"><div><strong>模型:</strong> ${base}</div>${gpt}${gem}${fb}</div>`;
+}
+
 function initTheme() {
   const btn = document.getElementById("theme");
   const saved = localStorage.getItem("theme") || "night";
@@ -112,7 +121,7 @@ async function renderPicks() {
       <p class="pick-main">推荐: <strong>${x.pick || "模型"}</strong> | 预测比分: ${x.most_likely_score || "-"}</p>
       <p class="pick-sub">主/平/客: ${fmtPct(x.p_home)} / ${fmtPct(x.p_draw)} / ${fmtPct(x.p_away)}</p>
       <p class="pick-sub">EV ${fmtNum(x.ev, 4)} | Kelly ${fmtNum(x.kelly, 4)}</p>
-      <p class="pick-why" title="${safeText(x.why)}">${x.why || "-"}</p>
+      <div class="pick-why" title="${safeText(x.why)}">${reasonBlock(x)}</div>
     </article>
   `).join("");
 
@@ -143,7 +152,7 @@ async function renderPicks() {
       <td class="prob-cell">${modelProbCell(x)}</td>
       <td>${x.most_likely_score || "-"}</td>
       <td>${badge(x.label)}</td>
-      <td title="${safeText(x.why)}">${x.why || "-"}</td>
+      <td title="${safeText(x.why)}">${reasonBlock(x)}</td>
     </tr>
   `).join("");
 }

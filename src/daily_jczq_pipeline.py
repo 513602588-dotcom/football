@@ -388,7 +388,7 @@ def llm_chat_completion(base: str, key: str, model: str, prompt: str) -> Optiona
         return None
 
 
-def build_llm_reason(cfg: LLMConfig, pick: Dict[str, object]) -> Tuple[str, str]:
+def build_llm_reason(cfg: LLMConfig, pick: Dict[str, object]) -> Tuple[str, str, Optional[str], Optional[str]]:
     prompt = (
         f"比赛: {pick['home']} vs {pick['away']}\n"
         f"概率: 主{pick['p_home']:.2f} 平{pick['p_draw']:.2f} 客{pick['p_away']:.2f}\n"
@@ -401,13 +401,14 @@ def build_llm_reason(cfg: LLMConfig, pick: Dict[str, object]) -> Tuple[str, str]
     gem_text = llm_chat_completion(cfg.gemini_base, cfg.gemini_key, cfg.gemini_model, prompt)
 
     if gpt_text and gem_text:
-        return f"GPT: {gpt_text} | Gemini: {gem_text}", "both"
+        return f"GPT: {gpt_text} | Gemini: {gem_text}", "both", gpt_text, gem_text
     if gpt_text:
-        return f"GPT: {gpt_text}", "openai"
+        return f"GPT: {gpt_text}", "openai", gpt_text, None
     if gem_text:
-        return f"Gemini: {gem_text}", "gemini"
+        return f"Gemini: {gem_text}", "gemini", None, gem_text
 
-    return "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。", "fallback"
+    fallback = "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。"
+    return fallback, "fallback", None, None
 
 
 def build_prediction_rows(fx: pd.DataFrame, history: pd.DataFrame) -> Tuple[List[Dict[str, object]], Dict[str, object]]:
@@ -536,10 +537,17 @@ def build_payload(rows: List[Dict[str, object]], bt: Dict[str, object], llm_cfg:
 
     llm_used = {"both": 0, "openai": 0, "gemini": 0, "fallback": 0}
     for p in top:
-        llm_reason, llm_status = build_llm_reason(llm_cfg, p)
+        base_reason = str(p.get("why", ""))
+        llm_reason, llm_status, gpt_reason, gemini_reason = build_llm_reason(llm_cfg, p)
         llm_used[llm_status] = llm_used.get(llm_status, 0) + 1
-        p["why"] = f"{p['why']} | {llm_reason}"
+        p["why"] = f"{base_reason} | {llm_reason}"
         p["llm_status"] = llm_status
+        p["reasons"] = {
+            "base": base_reason,
+            "gpt": gpt_reason,
+            "gemini": gemini_reason,
+            "fallback": llm_reason if llm_status == "fallback" else None,
+        }
 
     return {
         "meta": {

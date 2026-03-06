@@ -169,6 +169,16 @@ h2 {
   line-height: 1.4;
 }
 
+.reason-block {
+  display: grid;
+  gap: 4px;
+  white-space: normal;
+}
+
+.reason-block div {
+  line-height: 1.35;
+}
+
 .table-wrap {
   overflow: auto;
   border: 1px solid var(--line);
