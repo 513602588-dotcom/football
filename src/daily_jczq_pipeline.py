@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -222,6 +223,9 @@ def probe_external_connections() -> Dict[str, object]:
             cand,
         )
         probe_one["model"] = cand
+        if probe_one.get("error") == "missing_or_placeholder_key":
+            openai_probe = probe_one
+            break
         if probe_one.get("ok"):
             openai_probe = probe_one
             break
@@ -237,12 +241,21 @@ def probe_external_connections() -> Dict[str, object]:
             cand,
         )
         probe_one["model"] = cand
+        if probe_one.get("error") == "missing_or_placeholder_key":
+            gemini_probe = probe_one
+            break
         if probe_one.get("ok"):
             gemini_probe = probe_one
             break
         gemini_probe = probe_one
     out["gemini_relay"] = gemini_probe
     return out
+
+
+def load_runtime_env() -> None:
+    # Keep committed .env/.env.example safe placeholders, and load private overrides from .env.local.
+    load_dotenv(".env", override=False)
+    load_dotenv(".env.local", override=True)
 
 
 def utc_now_str() -> str:
@@ -573,28 +586,61 @@ def llm_chat_completion(base: str, key: str, model: str, prompt: str) -> Optiona
     url = base.rstrip("/") + "/chat/completions"
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
+    def clean_llm_text(txt: str) -> Optional[str]:
+        t = re.sub(r"\s+", " ", str(txt or "")).strip()
+        if not t:
+            return None
+        if len(t) < 10:
+            return None
+        if t in {"战术", "赔率", "分析", "建议", "可博", "主胜", "客胜", "平局"}:
+            return None
+        # Prefer outputs with Chinese content; avoid accidental empty/english-only fragments.
+        if len(re.findall(r"[\u4e00-\u9fff]", t)) < 4:
+            return None
+        return t[:180]
+
     for m in parse_model_candidates(model):
         payload = {
             "model": m,
             "messages": [
-                {"role": "system", "content": "You are a concise football analyst. Reply in Chinese in <= 70 chars."},
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a concise football analyst. "
+                        "Reply in Chinese with exactly 2 short lines: "
+                        "line1 tactical reason, line2 value/odds reason."
+                    ),
+                },
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.2,
             "max_tokens": 120,
         }
-        try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=20)
-            resp.raise_for_status()
-            data = resp.json()
-            choices = data.get("choices") or []
-            if not choices:
-                continue
-            txt = (choices[0].get("message") or {}).get("content", "").strip()
-            if txt:
-                return txt
-        except Exception:
-            continue
+
+        for attempt in range(1, 4):
+            try:
+                resp = requests.post(url, headers=headers, json=payload, timeout=25)
+                if resp.ok:
+                    data = resp.json()
+                    choices = data.get("choices") or []
+                    if not choices:
+                        break
+                    txt = (choices[0].get("message") or {}).get("content", "")
+                    cleaned = clean_llm_text(txt)
+                    if cleaned:
+                        return cleaned
+                    break
+
+                # Retry transient gateway/rate-limit errors; otherwise move to next model.
+                if resp.status_code in {429, 500, 502, 503, 504} and attempt < 3:
+                    time.sleep(0.7 * attempt)
+                    continue
+                break
+            except Exception:
+                if attempt < 3:
+                    time.sleep(0.7 * attempt)
+                    continue
+                break
     return None
 
 
@@ -604,7 +650,7 @@ def build_llm_reason(cfg: LLMConfig, pick: Dict[str, object]) -> Tuple[str, str,
         f"概率: 主{pick['p_home']:.2f} 平{pick['p_draw']:.2f} 客{pick['p_away']:.2f}\n"
         f"xG: {pick['xg_home']:.2f}-{pick['xg_away']:.2f}\n"
         f"推荐: {pick['pick']} EV={pick.get('ev', 0)}\n"
-        "请给2条理由: 战术面+赔率价值面。"
+        "请输出两行: 第1行写战术面理由; 第2行写赔率价值面理由。"
     )
 
     gpt_text = llm_chat_completion(cfg.openai_base, cfg.openai_key, cfg.openai_model, prompt)
@@ -820,7 +866,7 @@ def load_llm_config() -> LLMConfig:
 
 
 def run() -> int:
-    load_dotenv()
+    load_runtime_env()
     Path("site").mkdir(parents=True, exist_ok=True)
     Path("site/.nojekyll").write_text("", encoding="utf-8")
 
@@ -840,6 +886,9 @@ def run() -> int:
             llm_gemini_on,
         )
     )
+
+    if not (api_football_on or football_data_on or odds_api_on or llm_openai_on or llm_gemini_on):
+        print("WARN all keys are missing/placeholder. Put real keys in .env.local (local) or GitHub Actions Secrets (CI).")
 
     probe = probe_external_connections()
     print("[probe]", json.dumps(probe, ensure_ascii=False))

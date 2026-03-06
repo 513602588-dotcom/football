@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-03-04T15:30:07.175055",
-  "total_predictions": 0,
+  "timestamp": "2026-03-06T21:32:43.108117",
+  "total_predictions": 3,
   "top_picks_count": 0,
-  "avg_confidence": 0,
-  "avg_win_probability": 0,
+  "avg_confidence": NaN,
+  "avg_win_probability": NaN,
   "avg_expected_value": 0,
   "max_expected_value": 0,
   "model_weights": {

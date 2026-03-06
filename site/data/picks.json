@@ -1,12 +1,65 @@
 {
   "meta": {
-    "generated_at_utc": "2026-03-06 12:14:34 UTC",
+    "generated_at_utc": "2026-03-06 23:25:12 UTC",
+    "python": "3.12",
+    "seasons_used": [
+      "JCZQ+OKOOO"
+    ],
+    "fusion": {
+      "W_PE": 0.5,
+      "W_ML": 0.3,
+      "W_BM": 0.2,
+      "ml_enabled": false
+    },
+    "llm": {
+      "openai_model": "gpt-5.4,gpt-5.3",
+      "gemini_model": "gemini-3.1-pro,gemini-3.0-pro",
+      "usage": {
+        "both": 0,
+        "openai": 0,
+        "gemini": 0,
+        "fallback": 4
+      }
+    },
     "scope": "Only China Sporttery JCZQ",
-    "error": "No fixtures from crawler"
+    "schedule_bjt": [
+      "09:30",
+      "21:30"
+    ],
+    "api_usage": {
+      "api_football_enabled": false,
+      "football_data_enabled": false,
+      "odds_api_enabled": false,
+      "allow_global_fixture_fallback": false
+    },
+    "connection_probe": {
+      "api_football": {
+        "ok": false,
+        "error": "missing_or_placeholder_key"
+      },
+      "football_data": {
+        "ok": false,
+        "error": "missing_or_placeholder_key"
+      },
+      "odds_api": {
+        "ok": false,
+        "error": "missing_or_placeholder_key"
+      },
+      "openai_relay": {
+        "ok": false,
+        "error": "missing_or_placeholder_key",
+        "model": "gpt-5.3"
+      },
+      "gemini_relay": {
+        "ok": false,
+        "error": "missing_or_placeholder_key",
+        "model": "gemini-3.0-pro"
+      }
+    }
   },
   "stats": {
-    "fixtures": 0,
-    "top": 0,
+    "fixtures": 19,
+    "top": 4,
     "backtest": {
       "matches_used": 0,
       "bets": 0,
@@ -16,6 +69,823 @@
       "logloss": 0.0
     }
   },
-  "top_picks": [],
-  "all": []
+  "top_picks": [
+    {
+      "date": "2026-03-04",
+      "time": "03-06 03:00",
+      "league": "沙特职业联赛",
+      "home": "拉斯永恒",
+      "away": "胡巴尔卡德西亚",
+      "xg_home": 1.2,
+      "xg_away": 1.25,
+      "p_home": 0.3643,
+      "p_draw": 0.2527,
+      "p_away": 0.383,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.15,
+        0.1844,
+        0.6656
+      ],
+      "most_likely_score": "0-1",
+      "odds_win": 5.9,
+      "odds_draw": 4.8,
+      "odds_lose": 1.33,
+      "ev": 1.1493,
+      "kelly": 0.08,
+      "pick": "主胜",
+      "score": 71.39,
+      "label": "⭐ 主推",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率36.4%, xG差0.28 | 模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。",
+      "llm_status": "fallback",
+      "reasons": {
+        "base": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率36.4%, xG差0.28",
+        "gpt": null,
+        "gemini": null,
+        "fallback": "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。"
+      }
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 03:30",
+      "league": "德甲",
+      "home": "汉堡",
+      "away": "勒沃库森",
+      "xg_home": 1.29,
+      "xg_away": 1.16,
+      "p_home": 0.3927,
+      "p_draw": 0.2707,
+      "p_away": 0.3366,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.2495,
+        0.2474,
+        0.5032
+      ],
+      "most_likely_score": "1-0",
+      "odds_win": 3.55,
+      "odds_draw": 3.58,
+      "odds_lose": 1.76,
+      "ev": 0.3941,
+      "kelly": 0.08,
+      "pick": "主胜",
+      "score": 64.96,
+      "label": "✔ 可博",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率39.3%, xG差0.28 | 模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。",
+      "llm_status": "fallback",
+      "reasons": {
+        "base": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率39.3%, xG差0.28",
+        "gpt": null,
+        "gemini": null,
+        "fallback": "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。"
+      }
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 03:30",
+      "league": "英超",
+      "home": "曼城",
+      "away": "诺丁汉",
+      "xg_home": 1.61,
+      "xg_away": 0.84,
+      "p_home": 0.5282,
+      "p_draw": 0.2604,
+      "p_away": 0.2114,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.6812,
+        0.1904,
+        0.1283
+      ],
+      "most_likely_score": "3-1",
+      "odds_win": 1.3,
+      "odds_draw": 4.65,
+      "odds_lose": 6.9,
+      "ev": 0.4588,
+      "kelly": 0.0778,
+      "pick": "客胜",
+      "score": 64.51,
+      "label": "✔ 可博",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率52.8%, xG差0.28 | 模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。",
+      "llm_status": "fallback",
+      "reasons": {
+        "base": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率52.8%, xG差0.28",
+        "gpt": null,
+        "gemini": null,
+        "fallback": "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。"
+      }
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-04 18:00",
+      "league": "亚洲冠军乙级联赛",
+      "home": "大阪钢巴",
+      "away": "叻武里",
+      "xg_home": 1.66,
+      "xg_away": 0.79,
+      "p_home": 0.5551,
+      "p_draw": 0.2489,
+      "p_away": 0.196,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.7765,
+        0.1526,
+        0.0708
+      ],
+      "most_likely_score": "3-1",
+      "odds_win": 1.14,
+      "odds_draw": 5.8,
+      "odds_lose": 12.5,
+      "ev": 1.4495,
+      "kelly": 0.08,
+      "pick": "客胜",
+      "score": 63.82,
+      "label": "✔ 可博",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率55.5%, xG差0.28 | 模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。",
+      "llm_status": "fallback",
+      "reasons": {
+        "base": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率55.5%, xG差0.28",
+        "gpt": null,
+        "gemini": null,
+        "fallback": "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。"
+      }
+    }
+  ],
+  "all": [
+    {
+      "date": "2026-03-04",
+      "time": "03-05 02:00",
+      "league": "西甲",
+      "home": "巴列卡诺",
+      "away": "奥维耶多",
+      "xg_home": 1.56,
+      "xg_away": 0.89,
+      "p_home": 0.4965,
+      "p_draw": 0.2823,
+      "p_away": 0.2213,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.571,
+        0.2642,
+        0.1648
+      ],
+      "most_likely_score": "3-1",
+      "odds_win": 1.55,
+      "odds_draw": 3.35,
+      "odds_lose": 5.37,
+      "ev": 0.1882,
+      "kelly": 0.0431,
+      "pick": "客胜",
+      "score": 32.54,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率49.6%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-06 03:00",
+      "league": "沙特职业联赛",
+      "home": "拉斯永恒",
+      "away": "胡巴尔卡德西亚",
+      "xg_home": 1.2,
+      "xg_away": 1.25,
+      "p_home": 0.3643,
+      "p_draw": 0.2527,
+      "p_away": 0.383,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.15,
+        0.1844,
+        0.6656
+      ],
+      "most_likely_score": "0-1",
+      "odds_win": 5.9,
+      "odds_draw": 4.8,
+      "odds_lose": 1.33,
+      "ev": 1.1493,
+      "kelly": 0.08,
+      "pick": "主胜",
+      "score": 71.39,
+      "label": "⭐ 主推",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率36.4%, xG差0.28 | 模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。",
+      "llm_status": "fallback",
+      "reasons": {
+        "base": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率36.4%, xG差0.28",
+        "gpt": null,
+        "gemini": null,
+        "fallback": "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。"
+      }
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-06 03:00",
+      "league": "沙特职业联赛",
+      "home": "达马克",
+      "away": "利雅得",
+      "xg_home": 1.44,
+      "xg_away": 1.01,
+      "p_home": 0.4481,
+      "p_draw": 0.2812,
+      "p_away": 0.2708,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.4432,
+        0.2841,
+        0.2727
+      ],
+      "most_likely_score": "2-1",
+      "odds_win": 2.0,
+      "odds_draw": 3.12,
+      "odds_lose": 3.25,
+      "ev": -0.1039,
+      "kelly": 0.0,
+      "pick": "主胜",
+      "score": 20.16,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率44.8%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 03:30",
+      "league": "德甲",
+      "home": "汉堡",
+      "away": "勒沃库森",
+      "xg_home": 1.29,
+      "xg_away": 1.16,
+      "p_home": 0.3927,
+      "p_draw": 0.2707,
+      "p_away": 0.3366,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.2495,
+        0.2474,
+        0.5032
+      ],
+      "most_likely_score": "1-0",
+      "odds_win": 3.55,
+      "odds_draw": 3.58,
+      "odds_lose": 1.76,
+      "ev": 0.3941,
+      "kelly": 0.08,
+      "pick": "主胜",
+      "score": 64.96,
+      "label": "✔ 可博",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率39.3%, xG差0.28 | 模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。",
+      "llm_status": "fallback",
+      "reasons": {
+        "base": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率39.3%, xG差0.28",
+        "gpt": null,
+        "gemini": null,
+        "fallback": "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。"
+      }
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 03:30",
+      "league": "英超",
+      "home": "富勒姆",
+      "away": "西汉姆联",
+      "xg_home": 1.44,
+      "xg_away": 1.01,
+      "p_home": 0.4526,
+      "p_draw": 0.2734,
+      "p_away": 0.274,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.4591,
+        0.2568,
+        0.284
+      ],
+      "most_likely_score": "2-1",
+      "odds_win": 1.93,
+      "odds_draw": 3.45,
+      "odds_lose": 3.12,
+      "ev": -0.0568,
+      "kelly": 0.0,
+      "pick": "平",
+      "score": 12.3,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率45.3%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 03:30",
+      "league": "英超",
+      "home": "曼城",
+      "away": "诺丁汉",
+      "xg_home": 1.61,
+      "xg_away": 0.84,
+      "p_home": 0.5282,
+      "p_draw": 0.2604,
+      "p_away": 0.2114,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.6812,
+        0.1904,
+        0.1283
+      ],
+      "most_likely_score": "3-1",
+      "odds_win": 1.3,
+      "odds_draw": 4.65,
+      "odds_lose": 6.9,
+      "ev": 0.4588,
+      "kelly": 0.0778,
+      "pick": "客胜",
+      "score": 64.51,
+      "label": "✔ 可博",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率52.8%, xG差0.28 | 模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。",
+      "llm_status": "fallback",
+      "reasons": {
+        "base": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率52.8%, xG差0.28",
+        "gpt": null,
+        "gemini": null,
+        "fallback": "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。"
+      }
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 03:30",
+      "league": "英超",
+      "home": "维拉",
+      "away": "切尔西",
+      "xg_home": 1.36,
+      "xg_away": 1.09,
+      "p_home": 0.417,
+      "p_draw": 0.2756,
+      "p_away": 0.3074,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.3344,
+        0.2646,
+        0.401
+      ],
+      "most_likely_score": "2-1",
+      "odds_win": 2.65,
+      "odds_draw": 3.35,
+      "odds_lose": 2.21,
+      "ev": 0.105,
+      "kelly": 0.0636,
+      "pick": "主胜",
+      "score": 31.36,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率41.7%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 04:00",
+      "league": "国王杯",
+      "home": "皇家社会",
+      "away": "毕尔巴鄂",
+      "xg_home": 1.43,
+      "xg_away": 1.02,
+      "p_home": 0.4431,
+      "p_draw": 0.2838,
+      "p_away": 0.2732,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.4257,
+        0.2932,
+        0.2811
+      ],
+      "most_likely_score": "2-1",
+      "odds_win": 2.08,
+      "odds_draw": 3.02,
+      "odds_lose": 3.15,
+      "ev": -0.0784,
+      "kelly": 0.0,
+      "pick": "主胜",
+      "score": 19.94,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率44.3%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 04:00",
+      "league": "意大利杯",
+      "home": "拉齐奥",
+      "away": "亚特兰大",
+      "xg_home": 1.33,
+      "xg_away": 1.12,
+      "p_home": 0.4005,
+      "p_draw": 0.2873,
+      "p_away": 0.3122,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.2768,
+        0.3054,
+        0.4178
+      ],
+      "most_likely_score": "1-0",
+      "odds_win": 3.2,
+      "odds_draw": 2.9,
+      "odds_lose": 2.12,
+      "ev": 0.2816,
+      "kelly": 0.08,
+      "pick": "主胜",
+      "score": 51.82,
+      "label": "✔ 可博",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率40.1%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 04:00",
+      "league": "法国杯",
+      "home": "马赛",
+      "away": "图卢兹",
+      "xg_home": 1.56,
+      "xg_away": 0.89,
+      "p_home": 0.4981,
+      "p_draw": 0.2743,
+      "p_away": 0.2277,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.5753,
+        0.2362,
+        0.1885
+      ],
+      "most_likely_score": "3-1",
+      "odds_win": 1.54,
+      "odds_draw": 3.75,
+      "odds_lose": 4.7,
+      "ev": 0.07,
+      "kelly": 0.0189,
+      "pick": "客胜",
+      "score": 18.64,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率49.8%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-06 04:00",
+      "league": "英超",
+      "home": "热刺",
+      "away": "水晶宫",
+      "xg_home": 1.41,
+      "xg_away": 1.04,
+      "p_home": 0.4364,
+      "p_draw": 0.2803,
+      "p_away": 0.2832,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.4026,
+        0.2812,
+        0.3163
+      ],
+      "most_likely_score": "2-1",
+      "odds_win": 2.2,
+      "odds_draw": 3.15,
+      "odds_lose": 2.8,
+      "ev": -0.0398,
+      "kelly": 0.0,
+      "pick": "主胜",
+      "score": 19.64,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率43.6%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-06 04:10",
+      "league": "法国杯",
+      "home": "里昂",
+      "away": "朗斯",
+      "xg_home": 1.4,
+      "xg_away": 1.05,
+      "p_home": 0.4343,
+      "p_draw": 0.2766,
+      "p_away": 0.289,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.3952,
+        0.2682,
+        0.3366
+      ],
+      "most_likely_score": "2-1",
+      "odds_win": 2.24,
+      "odds_draw": 3.3,
+      "odds_lose": 2.63,
+      "ev": -0.0271,
+      "kelly": 0.0,
+      "pick": "主胜",
+      "score": 19.55,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率43.4%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 04:15",
+      "league": "英超",
+      "home": "纽卡斯尔",
+      "away": "曼联",
+      "xg_home": 1.37,
+      "xg_away": 1.08,
+      "p_home": 0.4214,
+      "p_draw": 0.2723,
+      "p_away": 0.3063,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.35,
+        0.253,
+        0.3971
+      ],
+      "most_likely_score": "2-1",
+      "odds_win": 2.53,
+      "odds_draw": 3.5,
+      "odds_lose": 2.23,
+      "ev": 0.0662,
+      "kelly": 0.0433,
+      "pick": "主胜",
+      "score": 26.91,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率42.1%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-04 16:00",
+      "league": "澳超",
+      "home": "麦克阿瑟FC",
+      "away": "中央海岸",
+      "xg_home": 1.56,
+      "xg_away": 0.89,
+      "p_home": 0.5037,
+      "p_draw": 0.2652,
+      "p_away": 0.2311,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.594,
+        0.2049,
+        0.2011
+      ],
+      "most_likely_score": "3-1",
+      "odds_win": 1.49,
+      "odds_draw": 4.32,
+      "odds_lose": 4.4,
+      "ev": 0.1455,
+      "kelly": 0.0438,
+      "pick": "平",
+      "score": 29.4,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率50.4%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-05 17:00",
+      "league": "女足亚洲杯",
+      "home": "伊朗女足",
+      "away": "澳大利女",
+      "xg_home": 1.44,
+      "xg_away": 1.01,
+      "p_home": 0.4701,
+      "p_draw": 0.2318,
+      "p_away": 0.2981,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.4789,
+        0.179,
+        0.3421
+      ],
+      "most_likely_score": "2-1",
+      "odds_win": 1.85,
+      "odds_draw": 4.95,
+      "odds_lose": 2.59,
+      "ev": 0.1477,
+      "kelly": 0.0374,
+      "pick": "平",
+      "score": 28.15,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率47.0%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-04 18:00",
+      "league": "亚冠",
+      "home": "首尔FC",
+      "away": "神户胜利",
+      "xg_home": 1.32,
+      "xg_away": 1.13,
+      "p_home": 0.3965,
+      "p_draw": 0.2872,
+      "p_away": 0.3163,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.2627,
+        0.3053,
+        0.4319
+      ],
+      "most_likely_score": "1-0",
+      "odds_win": 3.37,
+      "odds_draw": 2.9,
+      "odds_lose": 2.05,
+      "ev": 0.3362,
+      "kelly": 0.08,
+      "pick": "主胜",
+      "score": 58.19,
+      "label": "✔ 可博",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率39.6%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-04 18:00",
+      "league": "亚洲冠军乙级联赛",
+      "home": "大阪钢巴",
+      "away": "叻武里",
+      "xg_home": 1.66,
+      "xg_away": 0.79,
+      "p_home": 0.5551,
+      "p_draw": 0.2489,
+      "p_away": 0.196,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.7765,
+        0.1526,
+        0.0708
+      ],
+      "most_likely_score": "3-1",
+      "odds_win": 1.14,
+      "odds_draw": 5.8,
+      "odds_lose": 12.5,
+      "ev": 1.4495,
+      "kelly": 0.08,
+      "pick": "客胜",
+      "score": 63.82,
+      "label": "✔ 可博",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率55.5%, xG差0.28 | 模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。",
+      "llm_status": "fallback",
+      "reasons": {
+        "base": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率55.5%, xG差0.28",
+        "gpt": null,
+        "gemini": null,
+        "fallback": "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。"
+      }
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-04 19:00",
+      "league": "女足亚洲杯",
+      "home": "越南女",
+      "away": "印度女",
+      "xg_home": 1.34,
+      "xg_away": 1.11,
+      "p_home": 0.4131,
+      "p_draw": 0.2675,
+      "p_away": 0.3194,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.3209,
+        0.2362,
+        0.4429
+      ],
+      "most_likely_score": "1-0",
+      "odds_win": 2.76,
+      "odds_draw": 3.75,
+      "odds_lose": 2.0,
+      "ev": 0.1402,
+      "kelly": 0.0797,
+      "pick": "主胜",
+      "score": 35.42,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率41.3%, xG差0.28"
+    },
+    {
+      "date": "2026-03-04",
+      "time": "03-04 20:15",
+      "league": "亚冠",
+      "home": "柔佛",
+      "away": "广岛三箭",
+      "xg_home": 1.39,
+      "xg_away": 1.06,
+      "p_home": 0.4269,
+      "p_draw": 0.2844,
+      "p_away": 0.2887,
+      "pe_p": [
+        0.45,
+        0.28,
+        0.27
+      ],
+      "ml_p": null,
+      "bm_p": [
+        0.3691,
+        0.2953,
+        0.3356
+      ],
+      "most_likely_score": "2-1",
+      "odds_win": 2.4,
+      "odds_draw": 3.0,
+      "odds_lose": 2.64,
+      "ev": 0.0245,
+      "kelly": 0.0175,
+      "pick": "主胜",
+      "score": 22.16,
+      "label": "❌ 放弃",
+      "why": "融合权重 PE:0.50 ML:0.00 BM:0.20; 主胜率42.7%, xG差0.28"
+    }
+  ]
 }

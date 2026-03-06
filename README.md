@@ -21,9 +21,9 @@
 # 1. 安装依赖
 pip install -r requirements.txt
 
-# 2. 复制配置
-cp .env.example .env
-# 编辑 .env 填入API密钥
+# 2. 复制配置（本地私有，不提交）
+cp .env.example .env.local
+# 编辑 .env.local 填入API密钥
 
 # 3. 运行爬虫 + 预测管道
 python -m src.build_pipeline
@@ -31,12 +31,17 @@ python -m src.build_pipeline
 
 ## 📱 iPad + GitHub 最短部署步骤
 
-1. 在 GitHub 仓库 `Settings -> Secrets and variables -> Actions` 新建这些 `Repository secrets`:
-    `API_FOOTBALL_KEY`, `FOOTBALL_DATA_KEY`, `ODDS_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`
-2. 可选新增（不填也可跑默认值）:
+1. 在 GitHub 仓库 `Settings -> Secrets and variables -> Actions` 新建这些 `Repository secrets`（一接口一key）:
+    `API_FOOTBALL_KEY` -> api-sports.io
+    `FOOTBALL_DATA_KEY` -> football-data.org
+    `ODDS_API_KEY` -> the-odds-api.com
+    `OPENAI_API_KEY` -> OpenAI relay key
+    `GEMINI_API_KEY` -> Gemini relay key
+2. 可选新增（不填将自动使用默认值）:
     `OPENAI_BASE_URL`, `GEMINI_BASE_URL`, `OPENAI_MODEL`, `GEMINI_MODEL`
-3. 进入 `Actions -> Daily JCZQ Build & Deploy`，先手动点一次 `Run workflow`。
-4. 之后会按北京时间 `09:30` 和 `21:30` 自动更新页面。
+3. CI 不写 `.env`，仅使用 Actions Secrets 注入环境变量。
+4. 进入 `Actions -> Daily JCZQ Build & Deploy`，先手动点一次 `Run workflow`。
+5. 之后会按北京时间 `09:30` 和 `21:30` 自动更新页面。
 
 本地一键运行（短命令）:
 
