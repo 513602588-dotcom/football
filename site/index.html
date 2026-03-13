@@ -7,9 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
   <style>
-    /* 内置基础样式，避免style.css加载失败导致页面错乱 */
     :root {
       --primary: #0a0e27;
       --secondary: #141a35;
@@ -19,6 +17,11 @@
       --danger: #ff3d57;
       --text-primary: #ffffff;
       --text-secondary: #a0aec0;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
     body {
       margin: 0;
@@ -57,6 +60,7 @@
       font-size: 16px;
       color: var(--text-secondary);
       margin-top: 8px;
+      line-height: 1.5;
     }
     .btn {
       padding: 10px 20px;
@@ -76,6 +80,7 @@
       font-size: 14px;
       color: var(--text-secondary);
       margin: 10px 0;
+      word-break: break-word;
     }
     .schedule {
       font-size: 14px;
@@ -225,6 +230,8 @@
       justify-content: space-between;
       font-size: 12px;
       color: var(--text-secondary);
+      flex-wrap: wrap;
+      gap: 8px;
     }
     .pick-recommend {
       color: var(--accent);
@@ -251,13 +258,21 @@
       color: var(--text-secondary);
     }
     .error-tip {
-      text-align: center;
       padding: 20px;
       background: rgba(255, 61, 87, 0.1);
       border: 1px solid var(--danger);
       border-radius: 8px;
       color: var(--danger);
       margin: 20px 0;
+      word-break: break-all;
+    }
+    .success-tip {
+      padding: 15px;
+      background: rgba(0, 196, 140, 0.1);
+      border: 1px solid var(--success);
+      border-radius: 8px;
+      color: var(--success);
+      margin: 10px 0;
     }
     @media (max-width: 768px) {
       .brand {
@@ -285,6 +300,8 @@
       </div>
       <button id="theme" class="btn">切换日/夜</button>
     </div>
+    <!-- 状态提示 -->
+    <div id="status-tip"></div>
     <div id="meta" class="meta">数据加载中...</div>
     <div class="schedule">自动更新: 北京时间 09:30 / 21:30</div>
     <div class="cards">
@@ -355,12 +372,14 @@
 <script>
 // 全局数据存储
 let fullData = null;
-// 兼容GitHub Pages的多路径适配
+// 【修复1：强制适配GitHub Pages路径，自动获取仓库名】
+const basePath = window.location.pathname.replace(/\/[^\/]*$/, '');
 const DATA_PATHS = [
+  `${basePath}/data/picks.json`,
   './data/picks.json',
   '/data/picks.json',
-  `${window.location.pathname.replace(/\/$/, '')}/data/picks.json`
 ];
+console.log('尝试的数据路径:', DATA_PATHS);
 
 // 日/夜主题切换
 const themeBtn = document.getElementById('theme');
@@ -382,6 +401,31 @@ themeBtn.addEventListener('click', () => {
   }
 });
 
+// 【修复2：兼容时间格式，解决Invalid Date】
+function formatUTCtime(timeStr) {
+  if (!timeStr) return '未知时间';
+  try {
+    // 兼容后端的 "2026-03-13 15:08:41 UTC" 格式
+    const cleanTime = timeStr.replace(' UTC', 'Z').replace(' ', 'T');
+    const date = new Date(cleanTime);
+    if (isNaN(date.getTime())) {
+      // 备用解析方案
+      const [datePart, timePart] = timeStr.split(' ');
+      const [year, month, day] = datePart.split('-');
+      const [hour, minute] = timePart.split(':');
+      const date2 = new Date(Date.UTC(year, month-1, day, hour, minute));
+      if (!isNaN(date2.getTime())) {
+        return date2.toLocaleString('zh-CN');
+      }
+      return timeStr;
+    }
+    return date.toLocaleString('zh-CN');
+  } catch (e) {
+    console.error('时间解析失败', e, timeStr);
+    return timeStr;
+  }
+}
+
 // 数字格式化工具
 function formatPercent(num) {
   if (num === null || num === undefined || isNaN(num)) return '-';
@@ -399,8 +443,11 @@ function renderCards() {
   const stats = fullData.stats || {};
   const backtest = stats.backtest || {};
 
-  document.getElementById('k_fx').textContent = stats.fixtures || 0;
-  document.getElementById('k_top').textContent = stats.top || 0;
+  // 【修复3：正确读取赛事数量和推荐数量】
+  const totalFixtures = stats.fixtures || 0;
+  const topPicksCount = stats.top || 0;
+  document.getElementById('k_fx').textContent = totalFixtures;
+  document.getElementById('k_top').textContent = topPicksCount;
   document.getElementById('k_roi').textContent = formatPercent(backtest.roi || 0);
   document.getElementById('k_hit').textContent = formatPercent(backtest.hit_rate || 0);
   document.getElementById('k_ev').textContent = formatPercent(backtest.avg_ev || 0);
@@ -408,7 +455,7 @@ function renderCards() {
 
   // 更新元数据信息
   const generateAt = meta.generated_at_utc || '';
-  const updateTime = generateAt ? new Date(generateAt).toLocaleString('zh-CN') : new Date().toLocaleString('zh-CN');
+  const updateTime = formatUTCtime(generateAt);
   const leagueScope = meta.league_scope || '五大联赛 + 欧冠 + 欧联';
   document.getElementById('meta').textContent = `数据更新时间: ${updateTime} | 赛事范围: ${leagueScope}`;
 }
@@ -574,10 +621,12 @@ function renderAll() {
     renderTopCards();
     renderTopTable();
     renderAllTable();
+    document.getElementById('status-tip').innerHTML = '<div class="success-tip">✅ 数据加载成功，共' + (fullData?.stats?.fixtures || 0) + '场赛事</div>';
     console.log('数据渲染完成', fullData);
   } catch (error) {
     console.error('渲染过程出错', error);
     document.getElementById('meta').textContent = `数据渲染出错: ${error.message}`;
+    document.getElementById('status-tip').innerHTML = `<div class="error-tip">❌ 渲染失败: ${error.message}</div>`;
   }
 }
 
@@ -585,15 +634,24 @@ function renderAll() {
 async function loadData() {
   console.log('开始加载数据，尝试路径:', DATA_PATHS);
   let lastError = null;
+  document.getElementById('status-tip').innerHTML = '<div class="loading">数据加载中...</div>';
   
   // 循环尝试所有兼容路径
   for (const path of DATA_PATHS) {
     try {
       const response = await fetch(path);
+      console.log(`路径${path}响应状态:`, response.status);
       if (!response.ok) {
-        throw new Error(`HTTP错误: ${response.status}`);
+        throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
       }
-      fullData = await response.json();
+      // 先拿到文本，检查是不是JSON
+      const rawText = await response.text();
+      console.log(`路径${path}返回内容长度:`, rawText.length);
+      try {
+        fullData = JSON.parse(rawText);
+      } catch (jsonError) {
+        throw new Error(`JSON解析失败: ${jsonError.message}，返回内容不是有效的JSON`);
+      }
       console.log('数据加载成功，路径:', path, fullData);
       renderAll();
       return;
@@ -607,13 +665,14 @@ async function loadData() {
   // 所有路径都失败了
   console.error('所有数据路径都加载失败', lastError);
   document.getElementById('meta').textContent = `数据加载失败: ${lastError?.message || '未知错误'}`;
-  document.getElementById('top-cards').innerHTML = `
+  document.getElementById('status-tip').innerHTML = `
     <div class="error-tip">
-      <strong>数据加载失败</strong><br/>
-      请确认后端流水线已正常执行，且site/data/picks.json文件已生成<br/>
-      错误详情: ${lastError?.message || '未知错误'}
+      <strong>❌ 所有数据路径都加载失败</strong><br/>
+      错误详情: ${lastError?.message || '未知错误'}<br/>
+      请确认: 1. 后端流水线已正常执行 2. site/data/picks.json文件已生成 3. 仓库已开启GitHub Pages
     </div>
   `;
+  document.getElementById('top-cards').innerHTML = '<div class="empty-tip">数据加载失败</div>';
 }
 
 // 页面加载完成后执行
