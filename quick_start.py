@@ -86,7 +86,7 @@ def run_full_pipeline():
         
         # 运行管道
         results = pipeline.run_full_pipeline(
-            run_scrapers=True,
+            run_scrapers=False,
             stage_load_historical=True,
             stage_train_models=False,
             competitions=competitions
