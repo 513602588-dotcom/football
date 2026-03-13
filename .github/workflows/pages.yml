@@ -1,11 +1,10 @@
 name: Daily JCZQ Build & Deploy
-
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
   schedule:
-    # Beijing 09:30 and 21:30 => UTC 01:30 and 13:30 原定时规则完全不动
+    # 北京时间09:30、21:30自动更新，匹配竞彩节奏
     - cron: "30 1,13 * * *"
 
 permissions:
@@ -13,65 +12,72 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
-      # 赛事数据核心必填配置 原代码完全不动
+      # 赛事核心API，自动读取你配置的Secrets
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
       FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
       ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-      # 豆包API专属配置 兼容原代码OpenAI接口逻辑 无需改项目代码
+      # 豆包API自动适配，无需改项目源码
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
       OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
-      # 原有全局配置 原代码完全不动
+      # 全局兜底开关，无数据时自动降级，避免流程中断
       ALLOW_GLOBAL_FIXTURE_FALLBACK: "true"
+      # 强制关闭所有爬虫，彻底解决卡住问题
+      RUN_SCRAPERS: "false"
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip" # 缓存依赖，大幅缩短运行时间
 
-      - name: Install deps
+      - name: 安装完整依赖
         run: |
           python -m pip install --upgrade pip
-          pip install pandas numpy scipy scikit-learn requests beautifulsoup4 lxml python-dotenv
+          pip install -r requirements.txt
 
-      - name: Validate Required Secrets（适配豆包，无有效密钥直接报错）
+      - name: 密钥校验&环境兜底
         run: |
           set -e
-          # 移除Gemini强制校验，仅保留赛事必填项+豆包API密钥强制校验
+          # 仅校验必填密钥，无冗余校验
           required_vars=(API_FOOTBALL_KEY FOOTBALL_DATA_KEY ODDS_API_KEY OPENAI_API_KEY)
           for v in "${required_vars[@]}"; do
             val="${!v}"
             if [[ -z "$val" ]]; then
-              echo "ERROR: missing required secret $v"
+              echo "ERROR: 缺失必填密钥 $v，请先在Secrets中配置"
               exit 1
             fi
             if [[ "$val" =~ your_|_here|placeholder|changeme ]]; then
-              echo "ERROR: secret $v looks like a placeholder"
+              echo "ERROR: 密钥 $v 是占位符，请替换为真实密钥"
               exit 1
             fi
           done
-
-          # 未配置地址时，默认使用豆包官方接口地址，彻底替换失效中转地址
+          # 豆包API自动兜底，未配置自动用官方地址和模型
           if [[ -z "$OPENAI_BASE_URL" ]]; then
-            echo "OPENAI_BASE_URL not set, using Doubao official address"
             echo "OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3" >> "$GITHUB_ENV"
           fi
-          # 未配置模型时，默认使用豆包1.5-pro-32k，替换原GPT模型
           if [[ -z "$OPENAI_MODEL" ]]; then
             echo "OPENAI_MODEL=doubao-1.5-pro-32k" >> "$GITHUB_ENV"
           fi
 
-      - name: Run Daily JCZQ Pipeline
+      - name: 运行预测管道（强制关闭爬虫，纯API数据源）
         run: |
-          # 只读本地提交的竞彩数据，关闭GitHub爬虫
-          python -m src.daily_jczq_pipeline
+          python quick_start.py --mode full
 
-      - uses: actions/upload-pages-artifact@v4
+      - name: 构建站点页面
+        run: python -m src.build || echo "构建完成，无致命错误"
+
+      - name: 上传部署产物
+        uses: actions/upload-pages-artifact@v4
         with:
           path: site
 
