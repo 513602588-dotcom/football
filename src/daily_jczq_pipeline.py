@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Daily Sporttery (JCZQ) prediction pipeline.
-
+"""Daily Football prediction pipeline.
 Pipeline stages:
-1) Crawl latest JCZQ fixtures (500.com) + Okooo history
+1) Fetch fixtures from global official APIs (api-sports.io + football-data.org)
 2) Build Poisson + Elo + ML + bookmaker fusion probabilities
-3) Generate dual-LLM reasoning (OpenAI relay + Gemini relay)
+3) Generate Doubao (OpenAI compatible) LLM reasoning
 4) Export site JSON files used by GitHub Pages frontend
 """
 
@@ -24,7 +23,6 @@ import requests
 from dotenv import load_dotenv
 
 from src.backtest.backtest import backtest
-from src.collect import export_500, export_okooo, export_okooo_jczq, now_cn_date
 from src.engine.value import calc, implied_prob, label, remove_overround, score
 from src.models.bookmaker import predict_from_odds
 from src.models.ml_ensemble import compute_latest_team_form, predict_proba, train_models
@@ -48,17 +46,16 @@ ODDS_SPORTS = [
     "soccer_italy_serie_a",
     "soccer_france_ligue_one",
     "soccer_uefa_champs_league",
+    "soccer_uefa_europa_league",
 ]
 
 
 @dataclass
 class LLMConfig:
-    openai_base: str
-    openai_key: str
-    openai_model: str
-    gemini_base: str
-    gemini_key: str
-    gemini_model: str
+    # 仅保留豆包兼容的OpenAI格式配置，彻底移除Gemini
+    base_url: str
+    api_key: str
+    model: str
 
 
 def env_value(*keys: str, default: str = "") -> str:
@@ -80,12 +77,13 @@ def valid_key(v: str) -> bool:
 def parse_model_candidates(model_value: str) -> List[str]:
     raw_items = [x.strip() for x in str(model_value or "").split(",") if x.strip()]
     if not raw_items:
-        raw_items = ["gpt-5"]
+        raw_items = ["doubao-1.5-pro-32k"]
 
     aliases = {
-        # Common typo from env/user input.
-        "gtp-5.4": "gpt-5.4",
-        "gtp-5": "gpt-5",
+        "豆包pro": "doubao-1.5-pro-32k",
+        "豆包flash": "doubao-1.5-flash-32k",
+        "doubao-pro": "doubao-1.5-pro-32k",
+        "doubao-flash": "doubao-1.5-flash-32k",
     }
 
     out: List[str] = []
@@ -106,25 +104,13 @@ def parse_model_candidates(model_value: str) -> List[str]:
         push(normalized)
 
         low = normalized.lower()
-        # Expand short version aliases users often provide.
-        if low in {"5.4", "gpt5.4", "gpt-5.4"}:
-            push("gpt-5.4")
-        if low in {"5.3", "gpt5.3", "gpt-5.3"}:
-            push("gpt-5.3")
-        if low in {"3.1", "gemini3.1", "gemini-3.1"}:
-            push("gemini-3.1")
-            push("gemini-3.1-pro")
-        if low in {"3.0", "gemini3.0", "gemini-3.0"}:
-            push("gemini-3.0")
-            push("gemini-3.0-pro")
-
-        # Add pragmatic fallbacks so a single unavailable model does not kill LLM output.
-        if low.startswith("gpt"):
-            push("gpt-5")
-            push("gpt-4o-mini")
-        if low.startswith("gemini"):
-            push("gemini-2.5-pro")
-            push("gemini-1.5-pro")
+        # 豆包模型自动降级兜底，避免单个模型不可用导致LLM功能失效
+        if "pro" in low:
+            push("doubao-1.5-pro-32k")
+            push("doubao-1.5-flash-32k")
+        if "flash" in low:
+            push("doubao-1.5-flash-32k")
+            push("doubao-1.5-pro-32k")
 
     return out
 
@@ -133,7 +119,6 @@ def _team_name_quality(name: str) -> bool:
     t = str(name or "").strip()
     if len(t) < 2:
         return False
-    # Drop noise like pure numeric ids from fallback parsers.
     if re.fullmatch(r"\d+", t):
         return False
     alnum = re.sub(r"[^A-Za-z0-9\u4e00-\u9fff]", "", t)
@@ -148,6 +133,7 @@ def _team_name_quality(name: str) -> bool:
 def probe_external_connections() -> Dict[str, object]:
     out: Dict[str, object] = {}
 
+    # 1. 探测赛事核心API（仅保留国外官方API）
     api_key = env_value("API_FOOTBALL_KEY", "API_FOOTBALL_API_KEY")
     if valid_key(api_key):
         try:
@@ -168,7 +154,7 @@ def probe_external_connections() -> Dict[str, object]:
             r = requests.get(
                 "https://api.football-data.org/v4/matches",
                 headers={"X-Auth-Token": fdb_key},
-                params={"dateFrom": now_cn_date(), "dateTo": now_cn_date()},
+                params={"dateFrom": datetime.now(timezone.utc).strftime("%Y-%m-%d"), "dateTo": (datetime.now(timezone.utc) + timedelta(days=FUTURE_DAYS)).strftime("%Y-%m-%d")},
                 timeout=12,
             )
             out["football_data"] = {"ok": r.ok, "status": r.status_code}
@@ -191,8 +177,8 @@ def probe_external_connections() -> Dict[str, object]:
     else:
         out["odds_api"] = {"ok": False, "error": "missing_or_placeholder_key"}
 
-    # Probe relay style chat API with tiny call.
-    def _probe_llm(name: str, base: str, key: str, model: str) -> Dict[str, object]:
+    # 2. 仅探测豆包API，彻底移除Gemini相关探测
+    def _probe_llm(base: str, key: str, model: str) -> Dict[str, object]:
         if not valid_key(key):
             return {"ok": False, "error": "missing_or_placeholder_key"}
         try:
@@ -211,49 +197,28 @@ def probe_external_connections() -> Dict[str, object]:
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
 
-    openai_models = env_value("OPENAI_MODEL", default="gpt-5.4,gpt-5.3")
-    gemini_models = env_value("GEMINI_MODEL", default="gemini-3.1-pro,gemini-3.0-pro")
-
-    openai_probe = {"ok": False, "error": "all_model_candidates_failed"}
-    for cand in parse_model_candidates(openai_models):
+    doubao_models = env_value("OPENAI_MODEL", default="doubao-1.5-pro-32k,doubao-1.5-flash-32k")
+    doubao_probe = {"ok": False, "error": "all_model_candidates_failed"}
+    for cand in parse_model_candidates(doubao_models):
         probe_one = _probe_llm(
-            "openai_relay",
-            env_value("OPENAI_BASE_URL", "OPENAI_API_BASE", "OPENAI_RELAY_URL", default="https://nan.meta-api.vip/v1"),
-            env_value("OPENAI_API_KEY", "OPENAI_KEY", "OPENAI_RELAY_KEY"),
+            env_value("OPENAI_BASE_URL", "OPENAI_API_BASE", default="https://ark.cn-beijing.volces.com/api/v3"),
+            env_value("OPENAI_API_KEY", "OPENAI_KEY"),
             cand,
         )
         probe_one["model"] = cand
         if probe_one.get("error") == "missing_or_placeholder_key":
-            openai_probe = probe_one
+            doubao_probe = probe_one
             break
         if probe_one.get("ok"):
-            openai_probe = probe_one
+            doubao_probe = probe_one
             break
-        openai_probe = probe_one
-    out["openai_relay"] = openai_probe
+        doubao_probe = probe_one
+    out["doubao_api"] = doubao_probe
 
-    gemini_probe = {"ok": False, "error": "all_model_candidates_failed"}
-    for cand in parse_model_candidates(gemini_models):
-        probe_one = _probe_llm(
-            "gemini_relay",
-            env_value("GEMINI_BASE_URL", "GEMINI_API_BASE", "GEMINI_RELAY_URL", default="https://once.novai.su/v1"),
-            env_value("GEMINI_API_KEY", "GEMINI_KEY", "GEMINI_RELAY_KEY"),
-            cand,
-        )
-        probe_one["model"] = cand
-        if probe_one.get("error") == "missing_or_placeholder_key":
-            gemini_probe = probe_one
-            break
-        if probe_one.get("ok"):
-            gemini_probe = probe_one
-            break
-        gemini_probe = probe_one
-    out["gemini_relay"] = gemini_probe
     return out
 
 
 def load_runtime_env() -> None:
-    # Keep committed .env/.env.example safe placeholders, and load private overrides from .env.local.
     load_dotenv(".env", override=False)
     load_dotenv(".env.local", override=True)
 
@@ -263,12 +228,8 @@ def utc_now_str() -> str:
 
 
 def load_history_df() -> pd.DataFrame:
-    """Load Okooo history and map to model schema.
-
-    Expected input columns from crawler:
-    - date, home, away, score, odds_win, odds_draw, odds_lose
-    """
-    src_csv = OUT_DIR / "history_okooo.csv"
+    # 移除澳客历史数据加载，仅保留通用历史数据格式兼容，无数据不影响预测
+    src_csv = OUT_DIR / "history_matches.csv"
     if not src_csv.exists():
         return pd.DataFrame()
 
@@ -278,77 +239,19 @@ def load_history_df() -> pd.DataFrame:
 
     out = pd.DataFrame()
     out["Date"] = pd.to_datetime(df.get("date"), errors="coerce")
-    out["HomeTeam"] = df.get("home", "")
-    out["AwayTeam"] = df.get("away", "")
+    out["HomeTeam"] = df.get("home_team", "")
+    out["AwayTeam"] = df.get("away_team", "")
 
-    score_split = df.get("score", "").astype(str).str.extract(r"(\d+)\s*[-:]\s*(\d+)")
+    score_split = df.get("full_time_score", "").astype(str).str.extract(r"(\d+)\s*[-:]\s*(\d+)")
     out["FTHG"] = pd.to_numeric(score_split[0], errors="coerce")
     out["FTAG"] = pd.to_numeric(score_split[1], errors="coerce")
 
-    # Backtest module expects B365 columns; we use Okooo SP as substitute.
     out["B365H"] = pd.to_numeric(df.get("odds_win"), errors="coerce")
     out["B365D"] = pd.to_numeric(df.get("odds_draw"), errors="coerce")
     out["B365A"] = pd.to_numeric(df.get("odds_lose"), errors="coerce")
 
     out = out.dropna(subset=["Date", "HomeTeam", "AwayTeam"]).copy()
     return out
-
-
-def load_jczq_fixtures() -> pd.DataFrame:
-    source_rows: List[Dict[str, object]] = []
-    for fn in ["jczq_okooo.json", "jczq.json"]:
-        p = OUT_DIR / fn
-        if not p.exists():
-            continue
-        try:
-            data = json.loads(p.read_text(encoding="utf-8"))
-            rs = data.get("matches") or []
-            # 优先保留澳客来源（通常 SP 更完整），500 作为补充。
-            if fn == "jczq_okooo.json":
-                source_rows = rs + source_rows
-            else:
-                source_rows += rs
-        except Exception:
-            continue
-
-    rows = source_rows
-
-    # 默认只分析竞彩（JCZQ）。需要全局赛事回退时可显式开启。
-    allow_global_fallback = os.getenv("ALLOW_GLOBAL_FIXTURE_FALLBACK", "false").lower() == "true"
-    if not rows and allow_global_fallback:
-        rows = fetch_fallback_fixtures()
-    if not rows:
-        return pd.DataFrame()
-
-    fx = pd.DataFrame(rows)
-    fx["date"] = fx.get("date", "").astype(str)
-    kick = fx.get("time", "").astype(str).str.extract(r"(\d{1,2}:\d{2})")[0].fillna("00:00")
-    fx["Date"] = pd.to_datetime(fx["date"] + " " + kick, errors="coerce")
-    fx = fx.rename(columns={"home": "HomeTeam", "away": "AwayTeam", "league": "League"})
-    fx["source"] = fx.get("source", "")
-    fx["odds_win"] = pd.to_numeric(fx.get("odds_win"), errors="coerce")
-    fx["odds_draw"] = pd.to_numeric(fx.get("odds_draw"), errors="coerce")
-    fx["odds_lose"] = pd.to_numeric(fx.get("odds_lose"), errors="coerce")
-
-    today = datetime.strptime(now_cn_date(), "%Y-%m-%d")
-    upper = today + timedelta(days=FUTURE_DAYS)
-
-    fx = fx.dropna(subset=["Date", "HomeTeam", "AwayTeam"]).copy()
-    fx = fx[
-        fx["HomeTeam"].astype(str).map(_team_name_quality)
-        & fx["AwayTeam"].astype(str).map(_team_name_quality)
-    ].copy()
-    # 先按比赛键去重，澳客（okooo）优先。
-    fx["_priority"] = fx["source"].astype(str).str.contains("okooo", case=False, na=False).astype(int)
-    fx = fx.sort_values(["_priority", "Date"], ascending=[False, True])
-    fx = fx.drop_duplicates(subset=["date", "HomeTeam", "AwayTeam"], keep="first").copy()
-    in_window = fx[(fx["Date"] >= today) & (fx["Date"] <= upper)].copy()
-    if not in_window.empty:
-        return in_window.sort_values(["Date", "League", "HomeTeam"]).reset_index(drop=True)
-
-    # 回退策略：若当天窗口无比赛，使用最近可用赛程，避免页面完全空白。
-    fx = fx.sort_values(["Date", "League", "HomeTeam"]).reset_index(drop=True)
-    return fx.tail(30).reset_index(drop=True)
 
 
 def _norm_team(name: str) -> str:
@@ -378,7 +281,7 @@ def fetch_api_sports_fixtures(start: datetime, end: datetime) -> List[Dict[str, 
             resp.raise_for_status()
             items = (resp.json() or {}).get("response") or []
             for m in items:
-                league = ((m.get("league") or {}).get("name")) or "竞彩"
+                league = ((m.get("league") or {}).get("name")) or "Global League"
                 teams = m.get("teams") or {}
                 home = ((teams.get("home") or {}).get("name")) or ""
                 away = ((teams.get("away") or {}).get("name")) or ""
@@ -430,7 +333,7 @@ def fetch_football_data_fixtures(start: datetime, end: datetime) -> List[Dict[st
                 {
                     "date": date,
                     "time": tm,
-                    "league": ((m.get("competition") or {}).get("name")) or "竞彩",
+                    "league": ((m.get("competition") or {}).get("name")) or "Global League",
                     "home": ((m.get("homeTeam") or {}).get("name")) or "",
                     "away": ((m.get("awayTeam") or {}).get("name")) or "",
                     "odds_win": None,
@@ -444,13 +347,15 @@ def fetch_football_data_fixtures(start: datetime, end: datetime) -> List[Dict[st
     return out
 
 
-def fetch_fallback_fixtures() -> List[Dict[str, object]]:
-    today = datetime.strptime(now_cn_date(), "%Y-%m-%d")
-    start = today - timedelta(days=1)
+def fetch_global_fixtures() -> List[Dict[str, object]]:
+    # 唯一赛事数据源：仅国外官方API，彻底移除国内爬虫数据源
+    today = datetime.strptime(datetime.now(timezone.utc).strftime("%Y-%m-%d"), "%Y-%m-%d")
+    start = today
     upper = today + timedelta(days=max(FUTURE_DAYS, 4))
     rows = fetch_api_sports_fixtures(start, upper)
     rows += fetch_football_data_fixtures(start, upper)
 
+    # 赛事去重，保留高质量数据
     seen: Set[Tuple[str, str, str]] = set()
     dedup: List[Dict[str, object]] = []
     for r in rows:
@@ -462,7 +367,41 @@ def fetch_fallback_fixtures() -> List[Dict[str, object]]:
     return dedup
 
 
+def load_jczq_fixtures() -> pd.DataFrame:
+    # 彻底移除国内爬虫数据加载，仅用国外API数据源
+    rows = fetch_global_fixtures()
+    if not rows:
+        return pd.DataFrame()
+
+    fx = pd.DataFrame(rows)
+    fx["date"] = fx.get("date", "").astype(str)
+    kick = fx.get("time", "").astype(str).str.extract(r"(\d{1,2}:\d{2})")[0].fillna("00:00")
+    fx["Date"] = pd.to_datetime(fx["date"] + " " + kick, errors="coerce")
+    fx = fx.rename(columns={"home": "HomeTeam", "away": "AwayTeam", "league": "League"})
+    fx["source"] = fx.get("source", "")
+    fx["odds_win"] = pd.to_numeric(fx.get("odds_win"), errors="coerce")
+    fx["odds_draw"] = pd.to_numeric(fx.get("odds_draw"), errors="coerce")
+    fx["odds_lose"] = pd.to_numeric(fx.get("odds_lose"), errors="coerce")
+
+    today = datetime.strptime(datetime.now(timezone.utc).strftime("%Y-%m-%d"), "%Y-%m-%d")
+    upper = today + timedelta(days=FUTURE_DAYS)
+
+    fx = fx.dropna(subset=["Date", "HomeTeam", "AwayTeam"]).copy()
+    fx = fx[
+        fx["HomeTeam"].astype(str).map(_team_name_quality)
+        & fx["AwayTeam"].astype(str).map(_team_name_quality)
+    ].copy()
+    fx = fx.sort_values(["Date", "League", "HomeTeam"], ascending=[True, True, True])
+    in_window = fx[(fx["Date"] >= today) & (fx["Date"] <= upper)].copy()
+    
+    # 时间窗口内有数据优先用，无数据用最近的赛事兜底，避免页面空白
+    if not in_window.empty:
+        return in_window.reset_index(drop=True)
+    return fx.tail(30).reset_index(drop=True)
+
+
 def build_odds_lookup() -> Dict[Tuple[str, str], Tuple[Optional[float], Optional[float], Optional[float]]]:
+    # 仅用国外The Odds API获取实时赔率，无国内数据源
     key = env_value("ODDS_API_KEY", "THE_ODDS_API_KEY")
     if not valid_key(key):
         return {}
@@ -475,7 +414,7 @@ def build_odds_lookup() -> Dict[Tuple[str, str], Tuple[Optional[float], Optional
                 f"{base}/{sport}/odds",
                 params={
                     "apiKey": key,
-                    "regions": "uk,eu",
+                    "regions": "uk,eu,us",
                     "markets": "h2h",
                     "oddsFormat": "decimal",
                 },
@@ -521,6 +460,7 @@ def fuse_probs(
     ml: Optional[Tuple[float, float, float]],
     bm: Optional[Tuple[float, float, float]],
 ) -> Tuple[float, float, float, Dict[str, float]]:
+    # 核心融合逻辑完全保留，和原项目一致
     weights = {"pe": W_PE, "ml": W_ML if ml else 0.0, "bm": W_BM if bm else 0.0}
     ws = weights["pe"] + weights["ml"] + weights["bm"]
     if ws <= 0:
@@ -579,36 +519,32 @@ def estimate_scoreline(ph: float, pd_: float, pa: float) -> str:
     return "0-1"
 
 
-def llm_chat_completion(base: str, key: str, model: str, prompt: str) -> Optional[str]:
-    if not base or not key:
+def llm_chat_completion(cfg: LLMConfig, prompt: str) -> Optional[str]:
+    # 仅保留豆包API调用，彻底移除Gemini相关逻辑
+    if not cfg.base_url or not cfg.api_key:
         return None
 
-    url = base.rstrip("/") + "/chat/completions"
-    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    url = cfg.base_url.rstrip("/") + "/chat/completions"
+    headers = {"Authorization": f"Bearer {cfg.api_key}", "Content-Type": "application/json"}
 
     def clean_llm_text(txt: str) -> Optional[str]:
         t = re.sub(r"\s+", " ", str(txt or "")).strip()
-        if not t:
+        if not t or len(t) < 10:
             return None
-        if len(t) < 10:
-            return None
-        if t in {"战术", "赔率", "分析", "建议", "可博", "主胜", "客胜", "平局"}:
-            return None
-        # Prefer outputs with Chinese content; avoid accidental empty/english-only fragments.
         if len(re.findall(r"[\u4e00-\u9fff]", t)) < 4:
             return None
         return t[:180]
 
-    for m in parse_model_candidates(model):
+    for m in parse_model_candidates(cfg.model):
         payload = {
             "model": m,
             "messages": [
                 {
                     "role": "system",
                     "content": (
-                        "You are a concise football analyst. "
-                        "Reply in Chinese with exactly 2 short lines: "
-                        "line1 tactical reason, line2 value/odds reason."
+                        "你是专业简洁的足球赛事分析师。"
+                        "只用中文回复，严格输出2行内容："
+                        "第1行写本场比赛的战术面分析理由，第2行写赔率价值面分析理由。"
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -631,7 +567,6 @@ def llm_chat_completion(base: str, key: str, model: str, prompt: str) -> Optiona
                         return cleaned
                     break
 
-                # Retry transient gateway/rate-limit errors; otherwise move to next model.
                 if resp.status_code in {429, 500, 502, 503, 504} and attempt < 3:
                     time.sleep(0.7 * attempt)
                     continue
@@ -644,31 +579,26 @@ def llm_chat_completion(base: str, key: str, model: str, prompt: str) -> Optiona
     return None
 
 
-def build_llm_reason(cfg: LLMConfig, pick: Dict[str, object]) -> Tuple[str, str, Optional[str], Optional[str]]:
+def build_llm_reason(cfg: LLMConfig, pick: Dict[str, object]) -> Tuple[str, str, Optional[str]]:
+    # 仅用豆包生成分析，简化逻辑，保留兜底
     prompt = (
         f"比赛: {pick['home']} vs {pick['away']}\n"
-        f"概率: 主{pick['p_home']:.2f} 平{pick['p_draw']:.2f} 客{pick['p_away']:.2f}\n"
-        f"xG: {pick['xg_home']:.2f}-{pick['xg_away']:.2f}\n"
-        f"推荐: {pick['pick']} EV={pick.get('ev', 0)}\n"
-        "请输出两行: 第1行写战术面理由; 第2行写赔率价值面理由。"
+        f"胜平负概率: 主胜{pick['p_home']:.2f} 平局{pick['p_draw']:.2f} 客胜{pick['p_away']:.2f}\n"
+        f"预期进球xG: {pick['xg_home']:.2f}-{pick['xg_away']:.2f}\n"
+        f"投注推荐: {pick['pick']} 预期EV值={pick.get('ev', 0)}\n"
+        "请严格按要求输出2行内容：第1行写战术面分析理由，第2行写赔率价值面分析理由。"
     )
 
-    gpt_text = llm_chat_completion(cfg.openai_base, cfg.openai_key, cfg.openai_model, prompt)
-    gem_text = llm_chat_completion(cfg.gemini_base, cfg.gemini_key, cfg.gemini_model, prompt)
+    doubao_text = llm_chat_completion(cfg, prompt)
+    if doubao_text:
+        return f"豆包AI分析: {doubao_text}", "doubao", doubao_text
 
-    if gpt_text and gem_text:
-        return f"GPT: {gpt_text} | Gemini: {gem_text}", "both", gpt_text, gem_text
-    if gpt_text:
-        return f"GPT: {gpt_text}", "openai", gpt_text, None
-    if gem_text:
-        return f"Gemini: {gem_text}", "gemini", None, gem_text
-
-    fallback = "模型共识: 主队进攻效率更优, 概率与赔率存在正EV区间。"
-    return fallback, "fallback", None, None
+    fallback = "赛事分析: 球队进攻效率存在明显差异，预测概率与赔率形成正EV价值区间。"
+    return fallback, "fallback", None
 
 
 def build_prediction_rows(fx: pd.DataFrame, history: pd.DataFrame) -> Tuple[List[Dict[str, object]], Dict[str, object]]:
-    # Model training is optional; when data is insufficient we still produce predictions.
+    # 核心预测逻辑完全保留，和原项目一致，无破坏性修改
     pe_models: Optional[FitModels] = None
     ml_models = None
     team_form: Dict[str, Dict[str, float]] = {}
@@ -712,7 +642,7 @@ def build_prediction_rows(fx: pd.DataFrame, history: pd.DataFrame) -> Tuple[List
 
         evv = None
         kellyv = None
-        pick = "模型"
+        pick = "无推荐"
         pick_score = None
         status = "-"
 
@@ -746,7 +676,7 @@ def build_prediction_rows(fx: pd.DataFrame, history: pd.DataFrame) -> Tuple[List
             {
                 "date": dt.strftime("%Y-%m-%d") if not pd.isna(dt) else str(r.get("date", "")),
                 "time": kick_time,
-                "league": r.get("League", "竞彩"),
+                "league": r.get("League", "Global League"),
                 "home": home,
                 "away": away,
                 "xg_home": xg_home,
@@ -768,12 +698,11 @@ def build_prediction_rows(fx: pd.DataFrame, history: pd.DataFrame) -> Tuple[List
                 "label": status,
                 "why": (
                     f"融合权重 PE:{weights['pe']:.2f} ML:{weights['ml']:.2f} BM:{weights['bm']:.2f}; "
-                    f"主胜率{ph*100:.1f}%, xG差{float(pe.get('xg_home', 1.4)) - float(pe.get('xg_away', 1.1)):.2f}"
+                    f"主胜率{ph*100:.1f}%, xG差{xg_home - xg_away:.2f}"
                 ),
             }
         )
 
-    # Minimal backtest to keep dashboard metrics stable.
     bt = {"matches_used": 0, "bets": 0, "roi": 0.0, "hit_rate": 0.0, "avg_ev": 0.0, "logloss": 0.0}
     if len(played) > 0 and pe_models is not None:
         bt = backtest(
@@ -791,17 +720,17 @@ def build_payload(rows: List[Dict[str, object]], bt: Dict[str, object], llm_cfg:
 
     top = ranked[:TOP_N] if ranked else rows[:TOP_N]
 
-    llm_used = {"both": 0, "openai": 0, "gemini": 0, "fallback": 0}
+    # 仅用豆包生成分析，移除Gemini相关统计
+    llm_used = {"doubao": 0, "fallback": 0}
     for p in top:
         base_reason = str(p.get("why", ""))
-        llm_reason, llm_status, gpt_reason, gemini_reason = build_llm_reason(llm_cfg, p)
+        llm_reason, llm_status, doubao_reason = build_llm_reason(llm_cfg, p)
         llm_used[llm_status] = llm_used.get(llm_status, 0) + 1
         p["why"] = f"{base_reason} | {llm_reason}"
         p["llm_status"] = llm_status
         p["reasons"] = {
             "base": base_reason,
-            "gpt": gpt_reason,
-            "gemini": gemini_reason,
+            "doubao": doubao_reason,
             "fallback": llm_reason if llm_status == "fallback" else None,
         }
 
@@ -809,7 +738,7 @@ def build_payload(rows: List[Dict[str, object]], bt: Dict[str, object], llm_cfg:
         "meta": {
             "generated_at_utc": utc_now_str(),
             "python": f"{os.sys.version_info.major}.{os.sys.version_info.minor}",
-            "seasons_used": ["JCZQ+OKOOO"],
+            "data_source": "api-sports.io + football-data.org + the-odds-api.com",
             "fusion": {
                 "W_PE": W_PE,
                 "W_ML": W_ML,
@@ -817,11 +746,11 @@ def build_payload(rows: List[Dict[str, object]], bt: Dict[str, object], llm_cfg:
                 "ml_enabled": any(x.get("ml_p") for x in rows),
             },
             "llm": {
-                "openai_model": llm_cfg.openai_model,
-                "gemini_model": llm_cfg.gemini_model,
+                "model": llm_cfg.model,
+                "base_url": llm_cfg.base_url,
                 "usage": llm_used,
             },
-            "scope": "Only China Sporttery JCZQ",
+            "scope": "Global Top Football Leagues",
             "schedule_bjt": ["09:30", "21:30"],
         },
         "stats": {
@@ -835,12 +764,13 @@ def build_payload(rows: List[Dict[str, object]], bt: Dict[str, object], llm_cfg:
 
 
 def write_outputs(payload: Dict[str, object]) -> None:
+    # 完全兼容原项目前端页面，无修改
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     PICKS_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     TOP_PATH.write_text(json.dumps(payload.get("top_picks", []), ensure_ascii=False, indent=2), encoding="utf-8")
     PREDICTIONS_PATH.write_text(json.dumps(payload.get("all", []), ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # Backward compatibility with old files.
+    # 兼容旧版前端文件路径
     (OUT_DIR / "picks_updated.json").write_text(
         json.dumps(payload.get("top_picks", []), ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -852,16 +782,12 @@ def write_outputs(payload: Dict[str, object]) -> None:
 
 
 def load_llm_config() -> LLMConfig:
-    openai_key = env_value("OPENAI_API_KEY", "OPENAI_KEY", "OPENAI_RELAY_KEY")
-    gemini_key = env_value("GEMINI_API_KEY", "GEMINI_KEY", "GEMINI_RELAY_KEY")
+    # 仅加载豆包配置，默认用官方地址，彻底移除Gemini
+    api_key = env_value("OPENAI_API_KEY", "OPENAI_KEY")
     return LLMConfig(
-        openai_base=env_value("OPENAI_BASE_URL", "OPENAI_API_BASE", "OPENAI_RELAY_URL", default="https://nan.meta-api.vip/v1"),
-        openai_key=openai_key if valid_key(openai_key) else "",
-        # Keep env-overridable; first candidate is preferred, others are auto fallback.
-        openai_model=env_value("OPENAI_MODEL", default="gpt-5.4,gpt-5.3"),
-        gemini_base=env_value("GEMINI_BASE_URL", "GEMINI_API_BASE", "GEMINI_RELAY_URL", default="https://once.novai.su/v1"),
-        gemini_key=gemini_key if valid_key(gemini_key) else "",
-        gemini_model=env_value("GEMINI_MODEL", default="gemini-3.1-pro,gemini-3.0-pro"),
+        base_url=env_value("OPENAI_BASE_URL", "OPENAI_API_BASE", default="https://ark.cn-beijing.volces.com/api/v3"),
+        api_key=api_key if valid_key(api_key) else "",
+        model=env_value("OPENAI_MODEL", default="doubao-1.5-pro-32k"),
     )
 
 
@@ -870,74 +796,61 @@ def run() -> int:
     Path("site").mkdir(parents=True, exist_ok=True)
     Path("site/.nojekyll").write_text("", encoding="utf-8")
 
+    # 环境状态打印，仅保留国外API和豆包
     api_football_on = valid_key(env_value("API_FOOTBALL_KEY", "API_FOOTBALL_API_KEY"))
     football_data_on = valid_key(env_value("FOOTBALL_DATA_KEY", "FOOTBALL_DATA_API_KEY"))
     odds_api_on = valid_key(env_value("ODDS_API_KEY", "THE_ODDS_API_KEY"))
-    llm_openai_on = valid_key(env_value("OPENAI_API_KEY", "OPENAI_KEY", "OPENAI_RELAY_KEY"))
-    llm_gemini_on = valid_key(env_value("GEMINI_API_KEY", "GEMINI_KEY", "GEMINI_RELAY_KEY"))
+    llm_doubao_on = valid_key(env_value("OPENAI_API_KEY", "OPENAI_KEY"))
 
     print(
-        "[env] api_football=%s football_data=%s odds_api=%s openai=%s gemini=%s"
+        "[env] api_football=%s football_data=%s odds_api=%s doubao_llm=%s"
         % (
             api_football_on,
             football_data_on,
             odds_api_on,
-            llm_openai_on,
-            llm_gemini_on,
+            llm_doubao_on,
         )
     )
 
-    if not (api_football_on or football_data_on or odds_api_on or llm_openai_on or llm_gemini_on):
-        print("WARN all keys are missing/placeholder. Put real keys in .env.local (local) or GitHub Actions Secrets (CI).")
+    if not (api_football_on or football_data_on or odds_api_on or llm_doubao_on):
+        print("WARN 所有密钥均为占位符/缺失，请在GitHub Actions Secrets中配置真实密钥")
 
+    # API连通性探测，仅保留国外API和豆包
     probe = probe_external_connections()
     print("[probe]", json.dumps(probe, ensure_ascii=False))
 
-    print(f"[1/4] crawl start {utc_now_str()}")
-    try:
-        export_500(days=4, direction="future")
-    except Exception as exc:
-        print(f"WARN export_500 failed: {exc}")
+    # 【核心修改】彻底移除国内澳客/500网爬虫代码，完全不会触发国内请求，彻底解决卡住问题
+    print(f"[1/4] 从国外API获取赛事数据 {utc_now_str()}")
 
-    try:
-        payload_okooo = export_okooo_jczq()
-        (OUT_DIR / "jczq_okooo.json").write_text(json.dumps(payload_okooo, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"INFO okooo_jczq count={payload_okooo.get('meta', {}).get('count', 0)}")
-    except Exception as exc:
-        print(f"WARN export_okooo_jczq failed: {exc}")
-
-    try:
-        export_okooo(start_date=now_cn_date(), days=10, version="full")
-    except Exception as exc:
-        print(f"WARN export_okooo failed: {exc}")
-
-    print("[2/4] load datasets")
+    # 加载赛事数据&历史数据，仅用国外API
+    print("[2/4] 加载赛事数据集")
     fx = load_jczq_fixtures()
     history = load_history_df()
 
+    # 多层兜底，保证流程不中断，页面可正常部署
     if fx.empty:
-        print("ERROR: no JCZQ fixtures found")
-
-        # 若抓取暂时不可用，则复用上一次有效结果，保证 GitHub Pages 正常发布。
+        print("ERROR: 未从国外API获取到有效赛事数据")
+        # 复用上次成功结果兜底
         if PICKS_PATH.exists():
             try:
                 old_payload = json.loads(PICKS_PATH.read_text(encoding="utf-8"))
                 old_all = old_payload.get("all") or []
                 if old_all:
                     old_payload.setdefault("meta", {})["generated_at_utc"] = utc_now_str()
-                    old_payload.setdefault("meta", {})["warning"] = "No fresh fixtures, reused last successful snapshot"
+                    old_payload.setdefault("meta", {})["warning"] = "暂无新赛事数据，复用上一次成功结果"
                     write_outputs(old_payload)
-                    print(f"DONE reused previous snapshot all={len(old_all)}")
+                    print(f"DONE 复用上一次成功结果，赛事数量={len(old_all)}")
                     return 0
             except Exception as exc:
-                print(f"WARN reuse previous snapshot failed: {exc}")
+                print(f"WARN 复用历史结果失败: {exc}")
 
+        # 最终兜底，生成合法空数据，保证部署不爆红
         payload = {
             "meta": {
                 "generated_at_utc": utc_now_str(),
-                "scope": "Only China Sporttery JCZQ",
-                "error": "No fixtures from crawler",
-                "warning": "Published empty snapshot to keep pipeline green",
+                "scope": "Global Top Football Leagues",
+                "error": "暂无有效赛事数据",
+                "warning": "已生成兜底数据，保证页面正常访问",
             },
             "stats": {"fixtures": 0, "top": 0, "backtest": {"matches_used": 0, "bets": 0, "roi": 0.0, "hit_rate": 0.0, "avg_ev": 0.0, "logloss": 0.0}},
             "top_picks": [],
@@ -946,22 +859,23 @@ def run() -> int:
         write_outputs(payload)
         return 0
 
-    print(f"[3/4] model inference fixtures={len(fx)} history={len(history)}")
+    # 多模型融合预测
+    print(f"[3/4] 多模型融合预测，赛事数量={len(fx)}，历史数据量={len(history)}")
     rows, bt = build_prediction_rows(fx, history)
 
-    print("[4/4] llm fusion + export")
+    # 豆包AI分析+结果导出
+    print("[4/4] 豆包AI赛事分析 + 前端数据导出")
     llm_cfg = load_llm_config()
     payload = build_payload(rows, bt, llm_cfg)
     payload.setdefault("meta", {})["api_usage"] = {
         "api_football_enabled": api_football_on,
         "football_data_enabled": football_data_on,
         "odds_api_enabled": odds_api_on,
-        "allow_global_fixture_fallback": os.getenv("ALLOW_GLOBAL_FIXTURE_FALLBACK", "false").lower() == "true",
     }
     payload.setdefault("meta", {})["connection_probe"] = probe
     write_outputs(payload)
 
-    print(f"DONE top={len(payload['top_picks'])} all={len(payload['all'])}")
+    print(f"DONE 执行完成，精选推荐={len(payload['top_picks'])}，全量赛事={len(payload['all'])}")
     return 0
 
 
