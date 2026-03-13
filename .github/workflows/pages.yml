@@ -57,11 +57,11 @@ jobs:
 
           if [[ -z "$OPENAI_BASE_URL" ]]; then
             echo "OPENAI_BASE_URL not set, using default relay"
-            echo "OPENAI_BASE_URL=https://nan.meta-api.vip/v1" >> "$GITHUB_ENV"
+            echo "OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3" >> "$GITHUB_ENV"
           fi
           if [[ -z "$GEMINI_BASE_URL" ]]; then
             echo "GEMINI_BASE_URL not set, using default relay"
-            echo "GEMINI_BASE_URL=https://once.novai.su/v1" >> "$GITHUB_ENV"
+            echo "GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta" >> "$GITHUB_ENV"
           fi
           if [[ -z "$OPENAI_MODEL" ]]; then
             echo "OPENAI_MODEL=gpt-5.4,gpt-5.3" >> "$GITHUB_ENV"
