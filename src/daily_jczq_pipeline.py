@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Daily Top League Football Prediction Pipeline
-【冷启动专属架构 全量整改版】
+【冷启动专属架构 语法修复版】
 权重架构：多机构赔率共识(45%) + 球队近期状态(30%) + 交锋&赛事战意(15%) + xG等效修正(10%)
 适配场景：无历史训练数据、纯GitHub线上运行、仅用已配置的3个官方API、无国内爬虫
 赛事范围：五大联赛 + 欧冠 + 欧联
@@ -25,7 +25,6 @@ from dotenv import load_dotenv
 from src.backtest.backtest import backtest
 from src.engine.value import calc, implied_prob, label, remove_overround, score
 from src.models.bookmaker import predict_from_odds
-from src.models.poisson_elo import run_elo_simple
 from src.models.upset import avoid_upset
 
 # ====================== 【固定配置 无需修改】======================
@@ -309,7 +308,7 @@ def fetch_injury_correction(home_team: str, away_team: str, api_key: str) -> Tup
         away_inj_resp.raise_for_status()
         home_injuries = home_inj_resp.json().get("response", [])
         away_injuries = away_inj_resp.json().get("response", [])
-        # 计算修正值：主力核心伤停-0.04，替补-0.01
+        # 计算修正值：主力核心伤停-0.02，替补-0.01
         home_correction = 0.0
         away_correction = 0.0
         for inj in home_injuries:
@@ -333,6 +332,7 @@ def fetch_fixture_odds_data(home_team: str, away_team: str, api_key: str) -> Tup
         current_odds = None
         bookmaker_count = 0
         consensus_count = 0
+
         # 遍历目标赛事获取赔率
         for sport in ODDS_SPORTS:
             resp = requests.get(
@@ -402,11 +402,12 @@ def fetch_fixture_odds_data(home_team: str, away_team: str, api_key: str) -> Tup
                             round(total_od/valid_count, 2),
                             round(total_oa/valid_count, 2),
                         )
+                    # 找到匹配赛事后跳出event循环
                     break
+            # 找到匹配赔率后跳出sport循环
             if current_odds:
                 break
-        if current_odds:
-            break
+
         # 计算异动和共识修正
         move_correction = 0.0
         consensus_correction = 0.0
