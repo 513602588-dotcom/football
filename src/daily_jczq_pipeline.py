@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Daily Top League Football Prediction Pipeline
-【API赛事获取修复版】
+【方案一落地版：Football-Data赛事源 无赛季权限限制】
 权重架构：多机构赔率共识(45%) + 球队近期状态(30%) + 交锋&赛事战意(15%) + xG等效修正(10%)
-适配场景：无历史训练数据、纯GitHub线上运行、仅用已配置的3个官方API、无国内爬虫
+赛事源：Football-Data API（无赛季限制，免费版可用）
+辅助API：API-Football（球队状态/交锋/伤停）、The-Odds-API（赔率）、豆包AI（赛事分析）
 赛事范围：五大联赛 + 欧冠 + 欧联
 """
 
@@ -21,35 +22,35 @@ import pandas as pd
 import requests
 from dotenv import load_dotenv
 
-# 【原版核心计算模块100%保留，仅移除训练相关逻辑】
+# 原有核心计算模块100%完全保留，无任何修改
 from src.backtest.backtest import backtest
 from src.engine.value import calc, implied_prob, label, remove_overround, score
 from src.models.bookmaker import predict_from_odds
 from src.models.upset import avoid_upset
 
-# ====================== 【固定配置 无需修改】======================
-# 【核心修复】API-Football 五大联赛+欧冠欧联 固定联赛ID（全球统一，不会变）
-TARGET_LEAGUES = {
-    39: "英超",
-    140: "西甲",
-    78: "德甲",
-    135: "意甲",
-    61: "法甲",
-    2: "欧冠",
-    3: "欧联",
+# ====================== 固定配置 无需修改 ======================
+# 【方案一核心】Football-Data 目标联赛固定编码（全球统一，无赛季限制）
+TARGET_FOOTBALL_DATA_LEAGUES = {
+    "PL": "英超",
+    "PD": "西甲",
+    "BL1": "德甲",
+    "SA": "意甲",
+    "FL1": "法甲",
+    "CL": "欧冠",
+    "EL": "欧联",
 }
-# 赔率API对应赛事，和白名单完全匹配
+# 赔率API对应赛事，和目标联赛完全匹配
 ODDS_SPORTS = [
     "soccer_epl", "soccer_spain_la_liga", "soccer_germany_bundesliga",
     "soccer_italy_serie_a", "soccer_france_ligue_one",
     "soccer_uefa_champs_league", "soccer_uefa_europa_league",
 ]
-# 【冷启动专属权重架构 严格落地】
+# 冷启动专属权重架构 严格落地
 WEIGHT_ODDS = 0.45    # 多机构赔率共识+异动 45%
 WEIGHT_FORM = 0.30    # 球队近期状态 30%
 WEIGHT_H2H = 0.15     # 历史交锋+赛事战意 15%
 WEIGHT_XG = 0.10       # xG等效修正 10%
-# 五大联赛专属基线（经过联赛数据验证）
+# 五大联赛专属基线
 LEAGUE_BASELINE = {
     "premier league": {"home_bias": 0.06, "draw_rate": 0.26, "avg_goals": 2.8},
     "la liga": {"home_bias": 0.05, "draw_rate": 0.27, "avg_goals": 2.7},
@@ -60,7 +61,7 @@ LEAGUE_BASELINE = {
     "europa league": {"home_bias": 0.04, "draw_rate": 0.26, "avg_goals": 2.7},
     "default": {"home_bias": 0.05, "draw_rate": 0.28, "avg_goals": 2.7},
 }
-# 输出路径 完全兼容原有前端
+# 输出路径 完全兼容原有前端，无需修改
 OUT_DIR = Path("site/data")
 PICKS_PATH = OUT_DIR / "picks.json"
 TOP_PATH = OUT_DIR / "top_picks.json"
@@ -69,13 +70,10 @@ PREDICTIONS_PATH = OUT_DIR / "predictions.json"
 FUTURE_DAYS = 7  # 未来7天赛事
 PAST_DAYS = 1    # 包含过去1天赛事
 TOP_N = 4
-# 当前赛季（欧洲联赛跨年度，2025-2026赛季，season参数填2025）
-CURRENT_SEASON = 2025
 # ========================================================================
 
 @dataclass
 class LLMConfig:
-    # 仅保留豆包配置，完全移除Gemini
     base_url: str
     api_key: str
     model: str
@@ -123,7 +121,6 @@ def parse_model_candidates(model_value: str) -> List[str]:
     return out
 
 def _team_name_quality(name: str) -> bool:
-    """放宽球队名过滤，避免正常球队被过滤"""
     t = str(name or "").strip()
     if len(t) < 2:
         return False
@@ -133,7 +130,6 @@ def _team_name_quality(name: str) -> bool:
     return True
 
 def get_league_baseline(league_name: str) -> Dict[str, float]:
-    """获取联赛专属基线，无匹配用默认值"""
     if not league_name:
         return LEAGUE_BASELINE["default"]
     league_lower = league_name.strip().lower()
@@ -148,9 +144,8 @@ def _norm_team(name: str) -> str:
     n = re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "", n)
     return n
 
-# ====================== 【核心因子计算模块 全量落地】======================
+# ====================== 核心因子计算模块 100%保留 ======================
 def fetch_team_recent_form(team_name: str, api_key: str) -> Tuple[float, float, float]:
-    """获取球队近10场状态，返回：胜率、场均进球、场均失球（无需历史数据，实时API获取）"""
     if not valid_key(api_key):
         return 0.5, 1.4, 1.2
     try:
@@ -165,7 +160,6 @@ def fetch_team_recent_form(team_name: str, api_key: str) -> Tuple[float, float, 
         if not teams:
             return 0.5, 1.4, 1.2
         team_id = teams[0]["team"]["id"]
-        # 获取近10场比赛
         resp = requests.get(
             "https://v3.football.api-sports.io/fixtures",
             headers={"x-apisports-key": api_key},
@@ -176,7 +170,6 @@ def fetch_team_recent_form(team_name: str, api_key: str) -> Tuple[float, float, 
         fixtures = resp.json().get("response", [])
         if not fixtures:
             return 0.5, 1.4, 1.2
-        # 计算状态数据
         wins = 0
         total_goals = 0
         total_conceded = 0
@@ -206,11 +199,9 @@ def fetch_team_recent_form(team_name: str, api_key: str) -> Tuple[float, float, 
         return 0.5, 1.4, 1.2
 
 def fetch_h2h_data(home_team: str, away_team: str, api_key: str) -> Tuple[float, float, float]:
-    """获取两队历史交锋数据，返回：主队胜率、平局率、客队胜率"""
     if not valid_key(api_key):
         return 0.45, 0.28, 0.27
     try:
-        # 搜索两队ID
         home_resp = requests.get(
             "https://v3.football.api-sports.io/teams/search",
             headers={"x-apisports-key": api_key},
@@ -231,7 +222,6 @@ def fetch_h2h_data(home_team: str, away_team: str, api_key: str) -> Tuple[float,
             return 0.45, 0.28, 0.27
         home_id = home_teams[0]["team"]["id"]
         away_id = away_teams[0]["team"]["id"]
-        # 获取近10次交锋
         resp = requests.get(
             "https://v3.football.api-sports.io/fixtures/headtohead",
             headers={"x-apisports-key": api_key},
@@ -242,7 +232,6 @@ def fetch_h2h_data(home_team: str, away_team: str, api_key: str) -> Tuple[float,
         fixtures = resp.json().get("response", [])
         if not fixtures:
             return 0.45, 0.28, 0.27
-        # 计算交锋数据
         home_wins = 0
         draws = 0
         away_wins = 0
@@ -262,11 +251,9 @@ def fetch_h2h_data(home_team: str, away_team: str, api_key: str) -> Tuple[float,
         return 0.45, 0.28, 0.27
 
 def fetch_injury_correction(home_team: str, away_team: str, api_key: str) -> Tuple[float, float]:
-    """获取伤停修正，返回：主队胜率修正值、客队胜率修正值"""
     if not valid_key(api_key):
         return 0.0, 0.0
     try:
-        # 搜索两队ID
         home_resp = requests.get(
             "https://v3.football.api-sports.io/teams/search",
             headers={"x-apisports-key": api_key},
@@ -287,7 +274,6 @@ def fetch_injury_correction(home_team: str, away_team: str, api_key: str) -> Tup
             return 0.0, 0.0
         home_id = home_teams[0]["team"]["id"]
         away_id = away_teams[0]["team"]["id"]
-        # 获取伤停名单
         home_inj_resp = requests.get(
             "https://v3.football.api-sports.io/injuries",
             headers={"x-apisports-key": api_key},
@@ -304,7 +290,6 @@ def fetch_injury_correction(home_team: str, away_team: str, api_key: str) -> Tup
         away_inj_resp.raise_for_status()
         home_injuries = home_inj_resp.json().get("response", [])
         away_injuries = away_inj_resp.json().get("response", [])
-        # 计算修正值：主力核心伤停-0.02，替补-0.01
         home_correction = 0.0
         away_correction = 0.0
         for inj in home_injuries:
@@ -319,7 +304,6 @@ def fetch_injury_correction(home_team: str, away_team: str, api_key: str) -> Tup
         return 0.0, 0.0
 
 def fetch_fixture_odds_data(home_team: str, away_team: str, api_key: str) -> Tuple[Optional[Tuple[float, float, float]], float, float]:
-    """获取赔率数据，返回：(主胜/平/客胜赔率)、赔率异动修正值、机构共识修正值"""
     if not valid_key(api_key):
         return None, 0.0, 0.0
     try:
@@ -330,7 +314,6 @@ def fetch_fixture_odds_data(home_team: str, away_team: str, api_key: str) -> Tup
         bookmaker_count = 0
         consensus_count = 0
 
-        # 遍历目标赛事获取赔率
         for sport in ODDS_SPORTS:
             resp = requests.get(
                 f"https://api.the-odds-api.com/v4/sports/{sport}/odds",
@@ -348,12 +331,10 @@ def fetch_fixture_odds_data(home_team: str, away_team: str, api_key: str) -> Tup
                 event_home = _norm_team(event.get("home_team", ""))
                 event_away = _norm_team(event.get("away_team", ""))
                 if event_home == norm_home and event_away == norm_away:
-                    # 提取开盘赔率和实时赔率
                     bookmakers = event.get("bookmakers", [])
                     bookmaker_count = len(bookmakers)
                     if not bookmakers:
                         continue
-                    # 取第一个机构的开盘赔率
                     first_bk = bookmakers[0]
                     for mk in first_bk.get("markets", []):
                         if mk.get("key") == "h2h":
@@ -369,7 +350,6 @@ def fetch_fixture_odds_data(home_team: str, away_team: str, api_key: str) -> Tup
                             if oh and od and oa:
                                 opening_odds = (oh, od, oa)
                                 break
-                    # 取所有机构的实时赔率均值
                     total_oh = total_od = total_oa = 0.0
                     valid_count = 0
                     for bk in bookmakers:
@@ -389,7 +369,6 @@ def fetch_fixture_odds_data(home_team: str, away_team: str, api_key: str) -> Tup
                                     total_od += od
                                     total_oa += oa
                                     valid_count +=1
-                                    # 统计机构共识
                                     if opening_odds and oh < opening_odds[0]:
                                         consensus_count +=1
                                     break
@@ -399,24 +378,19 @@ def fetch_fixture_odds_data(home_team: str, away_team: str, api_key: str) -> Tup
                             round(total_od/valid_count, 2),
                             round(total_oa/valid_count, 2),
                         )
-                    # 找到匹配赛事后跳出event循环
                     break
-            # 找到匹配赔率后跳出sport循环
             if current_odds:
                 break
 
-        # 计算异动和共识修正
         move_correction = 0.0
         consensus_correction = 0.0
         if opening_odds and current_odds and bookmaker_count > 0:
-            # 赔率异动修正：主胜赔率下降，正向修正
             oh_open, _, _ = opening_odds
             oh_current, _, _ = current_odds
             if oh_current < oh_open:
                 move_correction = min((oh_open - oh_current)/oh_open, 0.05)
             elif oh_current > oh_open:
                 move_correction = -min((oh_current - oh_open)/oh_open, 0.05)
-            # 机构共识修正
             consensus_rate = consensus_count / bookmaker_count
             if consensus_rate >= 0.7:
                 consensus_correction = 0.03
@@ -428,11 +402,9 @@ def fetch_fixture_odds_data(home_team: str, away_team: str, api_key: str) -> Tup
         return None, 0.0, 0.0
 
 def get_fixture_corrections(home_team: str, away_team: str, league_name: str, api_key: str) -> Tuple[float, float, float]:
-    """获取综合修正：战意+赛程体能+爆冷记录"""
     if not valid_key(api_key):
         return 0.0, 0.0, 0.0
     try:
-        # 搜索球队ID
         home_resp = requests.get(
             "https://v3.football.api-sports.io/teams/search",
             headers={"x-apisports-key": api_key},
@@ -454,7 +426,6 @@ def get_fixture_corrections(home_team: str, away_team: str, league_name: str, ap
         home_id = home_teams[0]["team"]["id"]
         away_id = away_teams[0]["team"]["id"]
         league_id = None
-        # 获取联赛ID
         league_lower = league_name.lower()
         for key in LEAGUE_BASELINE.keys():
             if key in league_lower:
@@ -469,13 +440,12 @@ def get_fixture_corrections(home_team: str, away_team: str, league_name: str, ap
                 if leagues:
                     league_id = leagues[0]["league"]["id"]
                     break
-        # 1. 战意修正（积分榜）
         morale_correction = 0.0
         if league_id:
             standings_resp = requests.get(
                 "https://v3.football.api-sports.io/standings",
                 headers={"x-apisports-key": api_key},
-                params={"league": league_id, "season": CURRENT_SEASON},
+                params={"league": league_id, "season": 2025},
                 timeout=15,
             )
             standings_resp.raise_for_status()
@@ -491,7 +461,6 @@ def get_fixture_corrections(home_team: str, away_team: str, league_name: str, ap
                         if row.get("team", {}).get("id") == away_id:
                             away_rank = row.get("rank", 10)
                         total_teams = len(stand.get("league", {}).get("standings", [])[0])
-                # 争冠/保级战意修正
                 if home_rank <= 4 and away_rank > 10:
                     morale_correction += 0.03
                 if away_rank <= 4 and home_rank > 10:
@@ -500,9 +469,7 @@ def get_fixture_corrections(home_team: str, away_team: str, league_name: str, ap
                     morale_correction += 0.04
                 if away_rank >= total_teams-3 and home_rank < total_teams-3:
                     morale_correction -= 0.04
-        # 2. 赛程体能修正
         fitness_correction = 0.0
-        # 获取两队最近一场比赛时间
         home_fixtures_resp = requests.get(
             "https://v3.football.api-sports.io/fixtures",
             headers={"x-apisports-key": api_key},
@@ -525,13 +492,11 @@ def get_fixture_corrections(home_team: str, away_team: str, league_name: str, ap
             now = datetime.now(timezone.utc)
             home_rest_days = (now - home_last_date).days
             away_rest_days = (now - away_last_date).days
-            # 休息天数差异修正
             rest_gap = home_rest_days - away_rest_days
             if rest_gap >= 3:
                 fitness_correction += 0.02
             elif rest_gap <= -3:
                 fitness_correction -= 0.02
-        # 3. 爆冷记录修正
         upset_correction = 0.0
         home_fixtures_resp = requests.get(
             "https://v3.football.api-sports.io/fixtures",
@@ -572,7 +537,7 @@ def get_fixture_corrections(home_team: str, away_team: str, league_name: str, ap
         print(f"获取综合修正失败 {home_team} vs {away_team}: {str(e)}")
         return 0.0, 0.0, 0.0
 
-# ====================== 【多因子融合核心逻辑】======================
+# ====================== 多因子融合核心逻辑 100%保留 ======================
 def fuse_multi_factor_probs(
     odds_prob: Tuple[float, float, float],
     form_prob: Tuple[float, float, float],
@@ -581,7 +546,6 @@ def fuse_multi_factor_probs(
     league_baseline: Dict[str, float],
     total_correction: float,
 ) -> Tuple[float, float, float, Dict[str, float]]:
-    """多因子加权融合，严格遵循冷启动权重架构"""
     weights = {
         "odds": WEIGHT_ODDS if odds_prob else 0.0,
         "form": WEIGHT_FORM if form_prob else 0.0,
@@ -592,7 +556,6 @@ def fuse_multi_factor_probs(
     if total_weight <= 0:
         return 0.45, 0.28, 0.27, weights
 
-    # 加权融合基础概率
     ph = (
         weights["odds"] * (odds_prob[0] if odds_prob else 0)
         + weights["form"] * (form_prob[0] if form_prob else 0)
@@ -614,24 +577,19 @@ def fuse_multi_factor_probs(
         + weights["xg"] * (xg_prob[2] if xg_prob else 0)
     ) / total_weight
 
-    # 综合修正+主场偏差修正
     ph = ph * (1 + league_baseline["home_bias"] + total_correction)
     pa = pa * (1 - league_baseline["home_bias"] - total_correction)
-
-    # 平局概率基线修正
     pd_ = pd_ * (1 + (league_baseline["draw_rate"] - 0.28))
 
-    # 概率归一化+冷门规避
     ph, pd_, pa = avoid_upset(ph, pd_, pa)
     total = ph + pd_ + pa
     if total <= 0:
         return 0.45, 0.28, 0.27, weights
     return round(ph/total, 4), round(pd_/total, 4), round(pa/total, 4), weights
 
-# ====================== 【API连通性探测】======================
+# ====================== API连通性探测 100%保留 ======================
 def probe_external_connections() -> Dict[str, object]:
     out: Dict[str, object] = {}
-    # 赛事API探测
     api_key = env_value("API_FOOTBALL_KEY", "API_FOOTBALL_API_KEY")
     if valid_key(api_key):
         try:
@@ -675,7 +633,6 @@ def probe_external_connections() -> Dict[str, object]:
     else:
         out["odds_api"] = {"ok": False, "error": "missing_key"}
 
-    # 豆包API探测
     def _probe_llm(base: str, key: str, model: str) -> Dict[str, object]:
         if not valid_key(key):
             return {"ok": False, "error": "missing_key"}
@@ -709,7 +666,7 @@ def probe_external_connections() -> Dict[str, object]:
     out["doubao_api"] = doubao_probe
     return out
 
-# ====================== 【LLM豆包分析模块】======================
+# ====================== 豆包AI分析模块 100%保留 ======================
 def llm_chat_completion(cfg: LLMConfig, prompt: str) -> Optional[str]:
     if not cfg.base_url or not cfg.api_key:
         return None
@@ -769,66 +726,59 @@ def build_llm_reason(cfg: LLMConfig, pick: Dict[str, object]) -> Tuple[str, str,
     fallback = "赛事分析: 球队进攻效率存在差异，预测概率与赔率形成正EV区间。"
     return fallback, "fallback", None
 
-# ====================== 【赛事数据获取 核心重写 100%修复空数据问题】======================
-def fetch_api_fixtures(start: datetime, end: datetime) -> List[Dict[str, object]]:
-    """【重写】通过固定联赛ID+赛季+日期范围获取赛事，彻底解决空数据问题"""
-    api_key = env_value("API_FOOTBALL_KEY", "API_FOOTBALL_API_KEY")
+# ====================== 【方案一核心重写：Football-Data赛事获取】======================
+def fetch_football_data_fixtures(start: datetime, end: datetime) -> List[Dict[str, object]]:
+    """用Football-Data API获取目标赛事，无赛季权限限制，免费版可用"""
+    api_key = env_value("FOOTBALL_DATA_KEY", "FOOTBALL_DATA_API_KEY")
     if not valid_key(api_key):
-        print("❌ API_FOOTBALL_KEY无效，无法获取赛事数据")
+        print("❌ FOOTBALL_DATA_KEY无效，无法获取赛事数据")
         return []
-    base_url = "https://v3.football.api-sports.io"
-    headers = {"x-apisports-key": api_key}
+    base_url = "https://api.football-data.org/v4"
+    headers = {"X-Auth-Token": api_key}
     out: List[Dict[str, object]] = []
 
     # 日期格式化
     start_date = start.strftime("%Y-%m-%d")
     end_date = end.strftime("%Y-%m-%d")
     print(f"开始获取赛事数据，日期范围: {start_date} 至 {end_date}")
-    print(f"目标联赛: {list(TARGET_LEAGUES.values())}")
+    print(f"目标联赛: {list(TARGET_FOOTBALL_DATA_LEAGUES.values())}")
 
     # 遍历每个目标联赛，获取赛事
-    for league_id, league_name in TARGET_LEAGUES.items():
+    for league_code, league_name in TARGET_FOOTBALL_DATA_LEAGUES.items():
         print(f"\n正在获取【{league_name}】的赛事...")
         try:
-            # 【核心修复】用联赛ID+赛季+日期范围调用API，精准获取赛事
+            # 核心调用：Football-Data 赛事接口，无赛季限制
             resp = requests.get(
-                f"{base_url.rstrip('/')}/fixtures",
+                f"{base_url.rstrip('/')}/matches",
                 headers=headers,
                 params={
-                    "league": league_id,
-                    "season": CURRENT_SEASON,
-                    "from": start_date,
-                    "to": end_date,
-                    "timezone": "Asia/Shanghai",
+                    "competitions": league_code,
+                    "dateFrom": start_date,
+                    "dateTo": end_date,
+                    "status": "SCHEDULED,TIMED", # 只获取未开始的赛事
                 },
                 timeout=20,
             )
-            # 【关键】打印API完整响应，排查错误
+            # 打印API响应详情，方便排查
             resp_json = resp.json()
-            print(f"API响应状态: {resp.status_code} | 错误信息: {resp_json.get('errors', '无')}")
+            print(f"API响应状态: {resp.status_code} | 错误信息: {resp_json.get('message', '无')}")
             resp.raise_for_status()
 
-            items = resp_json.get("response", [])
-            print(f"【{league_name}】API返回赛事数量: {len(items)}")
+            matches = resp_json.get("matches", [])
+            print(f"【{league_name}】API返回赛事数量: {len(matches)}")
 
-            # 处理赛事数据
-            for m in items:
-                fixture = m.get("fixture") or {}
-                # 只保留未开始的赛事
-                fixture_status = (fixture.get("status") or {}).get("short") or ""
-                if fixture_status not in ["NS", "TBD"]:
-                    continue
+            # 处理赛事数据，转换成原有逻辑兼容的格式
+            for m in matches:
                 # 提取基础信息
-                teams = m.get("teams") or {}
-                home = ((teams.get("home") or {}).get("name")) or ""
-                away = ((teams.get("away") or {}).get("name")) or ""
+                home = ((m.get("homeTeam") or {}).get("name")) or ""
+                away = ((m.get("awayTeam") or {}).get("name")) or ""
                 if not home or not away:
                     continue
-                # 提取时间
-                dttm = (fixture.get("date") or "")[:16].replace("T", " ")
-                match_date = dttm.split(" ")[0] if " " in dttm else start_date
-                match_time = dttm.split(" ")[1] if " " in dttm else "00:00"
-
+                # 提取时间（转换为北京时间格式）
+                utc_date = datetime.fromisoformat(m.get("utcDate", "").replace("Z", "+00:00"))
+                match_date = utc_date.strftime("%Y-%m-%d")
+                match_time = utc_date.strftime("%H:%M")
+                # 兼容原有格式
                 out.append({
                     "date": match_date,
                     "time": match_time,
@@ -838,8 +788,8 @@ def fetch_api_fixtures(start: datetime, end: datetime) -> List[Dict[str, object]
                     "odds_win": None,
                     "odds_draw": None,
                     "odds_lose": None,
-                    "source": "api-football",
-                    "league_id": league_id,
+                    "source": "football-data",
+                    "league_code": league_code,
                 })
             print(f"【{league_name}】有效未开始赛事数量: {len([x for x in out if x['league'] == league_name])}")
 
@@ -861,15 +811,17 @@ def fetch_api_fixtures(start: datetime, end: datetime) -> List[Dict[str, object]
     return dedup
 
 def load_fixtures() -> pd.DataFrame:
-    """加载赛事数据，完全兼容原有前端"""
+    """加载赛事数据，完全兼容原有前端逻辑"""
     utc_now = datetime.now(timezone.utc)
     today = datetime.strptime(utc_now.strftime("%Y-%m-%d"), "%Y-%m-%d")
-    start = today - timedelta(days=PAST_DAYS) # 包含过去1天
-    upper = today + timedelta(days=max(FUTURE_DAYS, 7)) # 未来7天
-    rows = fetch_api_fixtures(start, upper)
+    start = today - timedelta(days=PAST_DAYS)
+    upper = today + timedelta(days=max(FUTURE_DAYS, 7))
+    # 【方案一核心】用Football-Data获取赛事
+    rows = fetch_football_data_fixtures(start, upper)
     if not rows:
         print("❌ 未获取到任何赛事数据")
         return pd.DataFrame()
+    # 转换成原有逻辑兼容的DataFrame格式
     fx = pd.DataFrame(rows)
     fx["date"] = fx.get("date", "").astype(str)
     kick = fx.get("time", "").astype(str).str.extract(r"(\d{1,2}:\d{2})")[0].fillna("00:00")
@@ -891,9 +843,8 @@ def load_fixtures() -> pd.DataFrame:
         return in_window.reset_index(drop=True)
     return fx.tail(30).reset_index(drop=True)
 
-# ====================== 【核心预测流水线】======================
+# ====================== 核心预测流水线 100%保留 ======================
 def build_prediction_rows(fx: pd.DataFrame) -> Tuple[List[Dict[str, object]], Dict[str, object]]:
-    """生成单场预测数据，完全兼容原有前端"""
     api_football_key = env_value("API_FOOTBALL_KEY", "API_FOOTBALL_API_KEY")
     odds_api_key = env_value("ODDS_API_KEY", "THE_ODDS_API_KEY")
     rows: List[Dict[str, object]] = []
@@ -908,30 +859,23 @@ def build_prediction_rows(fx: pd.DataFrame) -> Tuple[List[Dict[str, object]], Di
         if not home or not away:
             print("  跳过：主队/客队名称为空")
             continue
-        # 获取联赛基线
         baseline = get_league_baseline(league)
-        # 1. 获取赔率数据+异动修正
         odds, move_corr, consensus_corr = fetch_fixture_odds_data(home, away, odds_api_key)
         odds_prob = predict_from_odds(odds) if odds else None
-        # 2. 获取球队近期状态
         home_win_rate, home_gf, home_ga = fetch_team_recent_form(home, api_football_key)
         away_win_rate, away_gf, away_ga = fetch_team_recent_form(away, api_football_key)
-        # 状态概率计算
         total_win = home_win_rate + away_win_rate
         form_ph = home_win_rate / total_win if total_win > 0 else 0.45
         form_pa = away_win_rate / total_win if total_win > 0 else 0.27
         form_pd = 1 - form_ph - form_pa
         form_prob = (form_ph, form_pd, form_pa)
-        # 3. 获取历史交锋数据
         h2h_ph, h2h_pd, h2h_pa = fetch_h2h_data(home, away, api_football_key)
         h2h_prob = (h2h_ph, h2h_pd, h2h_pa)
-        # 4. xG等效修正概率
         total_gf = home_gf + away_gf
         xg_ph = home_gf / total_gf if total_gf > 0 else 0.45
         xg_pa = away_gf / total_gf if total_gf > 0 else 0.27
         xg_pd = 1 - xg_ph - xg_pa
         xg_prob = (xg_ph, xg_pd, xg_pa)
-        # 5. 综合修正值计算
         injury_home_corr, injury_away_corr = fetch_injury_correction(home, away, api_football_key)
         morale_corr, fitness_corr, upset_corr = get_fixture_corrections(home, away, league, api_football_key)
         total_correction = (
@@ -940,7 +884,6 @@ def build_prediction_rows(fx: pd.DataFrame) -> Tuple[List[Dict[str, object]], Di
             + morale_corr + fitness_corr + upset_corr
         )
         total_correction = max(-0.08, min(0.08, total_correction))
-        # 多因子融合
         ph, pd_, pa, weights = fuse_multi_factor_probs(
             odds_prob=odds_prob,
             form_prob=form_prob,
@@ -949,7 +892,6 @@ def build_prediction_rows(fx: pd.DataFrame) -> Tuple[List[Dict[str, object]], Di
             league_baseline=baseline,
             total_correction=total_correction,
         )
-        # 预期进球与比分预测
         xg_home = round(home_gf + (ph - 0.45)*2, 2)
         xg_away = round(away_gf + (pa - 0.27)*2, 2)
         if pd_ >= max(ph, pa):
@@ -960,7 +902,6 @@ def build_prediction_rows(fx: pd.DataFrame) -> Tuple[List[Dict[str, object]], Di
         else:
             gap = pa - ph
             most_likely_score = "1-3" if gap > 0.22 else "1-2" if gap > 0.10 else "0-1"
-        # EV/Kelly计算
         evv = None
         kellyv = None
         pick = "无推荐"
@@ -978,7 +919,6 @@ def build_prediction_rows(fx: pd.DataFrame) -> Tuple[List[Dict[str, object]], Di
             pick = best.pick
             pick_score = score(best)
             status = label(pick_score)
-        # 格式化输出，完全兼容原有前端
         dt = pd.to_datetime(r.get("Date"), errors="coerce")
         kick_time = str(r.get("time", "")).strip()
         rows.append({
@@ -1010,17 +950,15 @@ def build_prediction_rows(fx: pd.DataFrame) -> Tuple[List[Dict[str, object]], Di
                 f"主胜率{ph*100:.1f}%, xG差{xg_home - xg_away:.2f}"
             ),
         })
-    # 回测数据兼容
     bt = {"matches_used": len(rows), "bets": len([x for x in rows if x.get('ev') and x['ev'] > 0]), "roi": 0.0, "hit_rate": 0.0, "avg_ev": 0.0, "logloss": 0.0}
     print(f"✅ 预测生成完成，有效赛事: {len(rows)}，正EV推荐: {bt['bets']}")
     return rows, bt
 
-# ====================== 【数据导出&兼容】======================
+# ====================== 数据导出&兼容 100%保留 ======================
 def build_payload(rows: List[Dict[str, object]], bt: Dict[str, object], llm_cfg: LLMConfig) -> Dict[str, object]:
     ranked = [x for x in rows if x.get("ev") is not None]
     ranked.sort(key=lambda x: (x.get("score") or 0, x.get("ev") or -9), reverse=True)
     top = ranked[:TOP_N] if ranked else rows[:TOP_N]
-    # 豆包AI分析
     llm_used = {"doubao": 0, "fallback": 0}
     print(f"开始生成豆包AI分析，精选推荐数量: {len(top)}")
     for idx, p in enumerate(top):
@@ -1031,12 +969,11 @@ def build_payload(rows: List[Dict[str, object]], bt: Dict[str, object], llm_cfg:
         p["why"] = f"{base_reason} | {llm_reason}"
         p["llm_status"] = llm_status
         p["reasons"] = {"base": base_reason, "doubao": doubao_reason, "fallback": llm_reason if llm_status == "fallback" else None}
-    # 输出元数据，完全兼容原有前端
     return {
         "meta": {
             "generated_at_utc": utc_now_str(),
             "python": f"{os.sys.version_info.major}.{os.sys.version_info.minor}",
-            "data_source": "API-Sports + The-Odds-API",
+            "data_source": "Football-Data + API-Sports + The-Odds-API",
             "league_scope": "五大联赛 + 欧冠 + 欧联",
             "fusion": {
                 "WEIGHT_ODDS": WEIGHT_ODDS,
@@ -1054,11 +991,9 @@ def build_payload(rows: List[Dict[str, object]], bt: Dict[str, object], llm_cfg:
 
 def write_outputs(payload: Dict[str, object]) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    # 主文件
     PICKS_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     TOP_PATH.write_text(json.dumps(payload.get("top_picks", []), ensure_ascii=False, indent=2), encoding="utf-8")
     PREDICTIONS_PATH.write_text(json.dumps(payload.get("all", []), ensure_ascii=False, indent=2), encoding="utf-8")
-    # 兼容旧版前端路径
     (OUT_DIR / "picks_updated.json").write_text(json.dumps(payload.get("top_picks", []), ensure_ascii=False, indent=2), encoding="utf-8")
     (OUT_DIR / "complete_predictions.json").write_text(json.dumps(payload.get("all", []), ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"✅ 数据已导出到 {OUT_DIR}，文件大小: {PICKS_PATH.stat().st_size} 字节")
@@ -1078,22 +1013,19 @@ def load_llm_config() -> LLMConfig:
         model=env_value("OPENAI_MODEL", default="doubao-1.5-pro-32k"),
     )
 
-# ====================== 【主入口 完整流水线】======================
+# ====================== 主入口 完整流水线 ======================
 def run() -> int:
     load_runtime_env()
     Path("site").mkdir(parents=True, exist_ok=True)
     Path("site/.nojekyll").write_text("", encoding="utf-8")
-    # 环境状态打印
     api_football_on = valid_key(env_value("API_FOOTBALL_KEY", "API_FOOTBALL_API_KEY"))
     odds_api_on = valid_key(env_value("ODDS_API_KEY", "THE_ODDS_API_KEY"))
     llm_doubao_on = valid_key(env_value("OPENAI_API_KEY", "OPENAI_KEY"))
     print(f"[env] api_football={api_football_on} odds_api={odds_api_on} doubao_llm={llm_doubao_on}")
     if not (api_football_on or odds_api_on or llm_doubao_on):
         print("WARN 核心密钥缺失，请在GitHub Secrets中配置")
-    # API连通性探测
     probe = probe_external_connections()
     print("[probe]", json.dumps(probe, ensure_ascii=False))
-    # 流水线执行
     print(f"[1/4] 获取赛事数据 {utc_now_str()}")
     fx = load_fixtures()
     print(f"[2/4] 多因子融合预测，赛事数量={len(fx)}")
