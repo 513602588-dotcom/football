@@ -42,7 +42,8 @@ jobs:
       - name: Validate Required Secrets
         run: |
           set -e
-          required_vars=(API_FOOTBALL_KEY FOOTBALL_DATA_KEY ODDS_API_KEY OPENAI_API_KEY GEMINI_API_KEY)
+          # 仅修改此处：移除GEMINI_API_KEY必填校验，其余原校验规则完全保留
+          required_vars=(API_FOOTBALL_KEY FOOTBALL_DATA_KEY ODDS_API_KEY OPENAI_API_KEY)
           for v in "${required_vars[@]}"; do
             val="${!v}"
             if [[ -z "$val" ]]; then
@@ -57,10 +58,12 @@ jobs:
 
           if [[ -z "$OPENAI_BASE_URL" ]]; then
             echo "OPENAI_BASE_URL not set, using default relay"
+            # 保留修复：替换失效地址，解决解析报错
             echo "OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3" >> "$GITHUB_ENV"
           fi
           if [[ -z "$GEMINI_BASE_URL" ]]; then
             echo "GEMINI_BASE_URL not set, using default relay"
+            # 保留修复：替换失效地址，解决解析报错
             echo "GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta" >> "$GITHUB_ENV"
           fi
           if [[ -z "$OPENAI_MODEL" ]]; then
