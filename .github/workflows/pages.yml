@@ -21,11 +21,8 @@ jobs:
       FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
       ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
-      GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
       OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
-      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
       ALLOW_GLOBAL_FIXTURE_FALLBACK: "true"
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +72,7 @@ jobs:
 
       - name: Run Daily JCZQ Pipeline
         run: |
-          python -m src.daily_jczq_pipeline
+          python -m src.daily_jczq_pipeline --run-scrapers
 
       - uses: actions/upload-pages-artifact@v4
         with:
