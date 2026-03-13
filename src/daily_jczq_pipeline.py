@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Daily Top League Football Prediction Pipeline
-【bug修复版 解决赛事数量=0问题】
+【API赛事获取修复版】
 权重架构：多机构赔率共识(45%) + 球队近期状态(30%) + 交锋&赛事战意(15%) + xG等效修正(10%)
 适配场景：无历史训练数据、纯GitHub线上运行、仅用已配置的3个官方API、无国内爬虫
 赛事范围：五大联赛 + 欧冠 + 欧联
@@ -28,11 +28,16 @@ from src.models.bookmaker import predict_from_odds
 from src.models.upset import avoid_upset
 
 # ====================== 【固定配置 无需修改】======================
-# 赛事白名单：仅五大联赛+欧冠+欧联，彻底过滤小众赛事
-ALLOWED_LEAGUE_KEYWORDS = [
-    "premier league", "la liga", "bundesliga", "serie a", "ligue 1",
-    "champions league", "europa league",
-]
+# 【核心修复】API-Football 五大联赛+欧冠欧联 固定联赛ID（全球统一，不会变）
+TARGET_LEAGUES = {
+    39: "英超",
+    140: "西甲",
+    78: "德甲",
+    135: "意甲",
+    61: "法甲",
+    2: "欧冠",
+    3: "欧联",
+}
 # 赔率API对应赛事，和白名单完全匹配
 ODDS_SPORTS = [
     "soccer_epl", "soccer_spain_la_liga", "soccer_germany_bundesliga",
@@ -61,9 +66,11 @@ PICKS_PATH = OUT_DIR / "picks.json"
 TOP_PATH = OUT_DIR / "top_picks.json"
 PREDICTIONS_PATH = OUT_DIR / "predictions.json"
 # 基础配置
-FUTURE_DAYS = 7  # 放宽到未来7天，避免时区问题拿不到赛事
-PAST_DAYS = 1    # 包含过去1天的赛事，兜底用
+FUTURE_DAYS = 7  # 未来7天赛事
+PAST_DAYS = 1    # 包含过去1天赛事
 TOP_N = 4
+# 当前赛季（欧洲联赛跨年度，2025-2026赛季，season参数填2025）
+CURRENT_SEASON = 2025
 # ========================================================================
 
 @dataclass
@@ -134,22 +141,6 @@ def get_league_baseline(league_name: str) -> Dict[str, float]:
         if key in league_lower:
             return baseline
     return LEAGUE_BASELINE["default"]
-
-def is_allowed_league(league_name: str) -> bool:
-    """【核心修复】赛事白名单过滤，修复正则bug，不再过滤带赛季年份的联赛"""
-    if not league_name:
-        return False
-    league_lower = league_name.strip().lower()
-    # 【修复】仅过滤低级别联赛，不匹配赛季年份里的数字
-    if re.search(r"(division|league|serie|liga)\s*[234]|championship|serie b|segunda|2nd|3rd|4th", league_lower):
-        print(f"过滤低级别联赛: {league_name}")
-        return False
-    # 白名单匹配
-    for keyword in ALLOWED_LEAGUE_KEYWORDS:
-        if keyword.lower() in league_lower:
-            return True
-    print(f"非目标联赛，过滤: {league_name}")
-    return False
 
 def _norm_team(name: str) -> str:
     n = (name or "").strip().lower()
@@ -484,7 +475,7 @@ def get_fixture_corrections(home_team: str, away_team: str, league_name: str, ap
             standings_resp = requests.get(
                 "https://v3.football.api-sports.io/standings",
                 headers={"x-apisports-key": api_key},
-                params={"league": league_id, "season": datetime.now().year},
+                params={"league": league_id, "season": CURRENT_SEASON},
                 timeout=15,
             )
             standings_resp.raise_for_status()
@@ -778,47 +769,69 @@ def build_llm_reason(cfg: LLMConfig, pick: Dict[str, object]) -> Tuple[str, str,
     fallback = "赛事分析: 球队进攻效率存在差异，预测概率与赔率形成正EV区间。"
     return fallback, "fallback", None
 
-# ====================== 【赛事数据获取 核心修复】======================
+# ====================== 【赛事数据获取 核心重写 100%修复空数据问题】======================
 def fetch_api_fixtures(start: datetime, end: datetime) -> List[Dict[str, object]]:
-    """获取目标赛事数据，修复过滤bug，增加详细日志"""
+    """【重写】通过固定联赛ID+赛季+日期范围获取赛事，彻底解决空数据问题"""
     api_key = env_value("API_FOOTBALL_KEY", "API_FOOTBALL_API_KEY")
     if not valid_key(api_key):
-        print("API_FOOTBALL_KEY无效，无法获取赛事数据")
+        print("❌ API_FOOTBALL_KEY无效，无法获取赛事数据")
         return []
-    base = "https://v3.football.api-sports.io"
+    base_url = "https://v3.football.api-sports.io"
+    headers = {"x-apisports-key": api_key}
     out: List[Dict[str, object]] = []
-    day = start
-    print(f"开始获取赛事数据，日期范围: {start.strftime('%Y-%m-%d')} 至 {end.strftime('%Y-%m-%d')}")
-    
-    while day <= end:
-        ds = day.strftime("%Y-%m-%d")
-        print(f"正在获取 {ds} 的赛事...")
+
+    # 日期格式化
+    start_date = start.strftime("%Y-%m-%d")
+    end_date = end.strftime("%Y-%m-%d")
+    print(f"开始获取赛事数据，日期范围: {start_date} 至 {end_date}")
+    print(f"目标联赛: {list(TARGET_LEAGUES.values())}")
+
+    # 遍历每个目标联赛，获取赛事
+    for league_id, league_name in TARGET_LEAGUES.items():
+        print(f"\n正在获取【{league_name}】的赛事...")
         try:
+            # 【核心修复】用联赛ID+赛季+日期范围调用API，精准获取赛事
             resp = requests.get(
-                base.rstrip("/") + "/fixtures",
-                headers={"x-apisports-key": api_key},
-                params={"date": ds, "timezone": "UTC"}, # 修复时区问题，用UTC日期
+                f"{base_url.rstrip('/')}/fixtures",
+                headers=headers,
+                params={
+                    "league": league_id,
+                    "season": CURRENT_SEASON,
+                    "from": start_date,
+                    "to": end_date,
+                    "timezone": "Asia/Shanghai",
+                },
                 timeout=20,
             )
+            # 【关键】打印API完整响应，排查错误
+            resp_json = resp.json()
+            print(f"API响应状态: {resp.status_code} | 错误信息: {resp_json.get('errors', '无')}")
             resp.raise_for_status()
-            items = resp.json().get("response", [])
-            print(f"API返回 {ds} 赛事数量: {len(items)}")
-            
-            valid_items = []
+
+            items = resp_json.get("response", [])
+            print(f"【{league_name}】API返回赛事数量: {len(items)}")
+
+            # 处理赛事数据
             for m in items:
-                league_name = ((m.get("league") or {}).get("name")) or ""
-                # 先打印所有联赛名，方便调试
-                print(f"  赛事: {league_name} | 主队: {m.get('teams', {}).get('home', {}).get('name')} vs 客队: {m.get('teams', {}).get('away', {}).get('name')}")
-                if not is_allowed_league(league_name):
+                fixture = m.get("fixture") or {}
+                # 只保留未开始的赛事
+                fixture_status = (fixture.get("status") or {}).get("short") or ""
+                if fixture_status not in ["NS", "TBD"]:
                     continue
+                # 提取基础信息
                 teams = m.get("teams") or {}
                 home = ((teams.get("home") or {}).get("name")) or ""
                 away = ((teams.get("away") or {}).get("name")) or ""
-                fixture = m.get("fixture") or {}
+                if not home or not away:
+                    continue
+                # 提取时间
                 dttm = (fixture.get("date") or "")[:16].replace("T", " ")
-                valid_items.append({
-                    "date": ds,
-                    "time": dttm[-5:] if len(dttm) >= 5 else "00:00",
+                match_date = dttm.split(" ")[0] if " " in dttm else start_date
+                match_time = dttm.split(" ")[1] if " " in dttm else "00:00"
+
+                out.append({
+                    "date": match_date,
+                    "time": match_time,
                     "league": league_name,
                     "home": home,
                     "away": away,
@@ -826,13 +839,14 @@ def fetch_api_fixtures(start: datetime, end: datetime) -> List[Dict[str, object]
                     "odds_draw": None,
                     "odds_lose": None,
                     "source": "api-football",
+                    "league_id": league_id,
                 })
-            print(f"  {ds} 过滤后有效赛事数量: {len(valid_items)}")
-            out.extend(valid_items)
+            print(f"【{league_name}】有效未开始赛事数量: {len([x for x in out if x['league'] == league_name])}")
+
         except Exception as e:
-            print(f"获取 {ds} 赛事失败: {str(e)}")
-        day += timedelta(days=1)
-    
+            print(f"❌ 获取【{league_name}】赛事失败: {str(e)}")
+            continue
+
     # 去重
     seen: Set[Tuple[str, str, str]] = set()
     dedup: List[Dict[str, object]] = []
@@ -842,16 +856,12 @@ def fetch_api_fixtures(start: datetime, end: datetime) -> List[Dict[str, object]
             continue
         seen.add(key)
         dedup.append(r)
-    
-    # 【兜底逻辑】如果过滤后赛事为0，返回所有API返回的赛事，避免完全没数据
-    if len(dedup) == 0:
-        print("⚠️  过滤后无有效赛事，启用兜底逻辑，返回所有获取到的赛事")
-        return out
-    print(f"✅ 最终获取有效赛事总数: {len(dedup)}")
+
+    print(f"\n✅ 最终获取有效赛事总数: {len(dedup)}")
     return dedup
 
 def load_fixtures() -> pd.DataFrame:
-    """加载赛事数据，完全兼容原有前端，放宽日期范围"""
+    """加载赛事数据，完全兼容原有前端"""
     utc_now = datetime.now(timezone.utc)
     today = datetime.strptime(utc_now.strftime("%Y-%m-%d"), "%Y-%m-%d")
     start = today - timedelta(days=PAST_DAYS) # 包含过去1天
@@ -863,7 +873,7 @@ def load_fixtures() -> pd.DataFrame:
     fx = pd.DataFrame(rows)
     fx["date"] = fx.get("date", "").astype(str)
     kick = fx.get("time", "").astype(str).str.extract(r"(\d{1,2}:\d{2})")[0].fillna("00:00")
-    fx["Date"] = pd.to_datetime(fx["date"] + " " + kick, errors="coerce", utc=True)
+    fx["Date"] = pd.to_datetime(fx["date"] + " " + kick, errors="coerce")
     fx = fx.rename(columns={"home": "HomeTeam", "away": "AwayTeam", "league": "League"})
     fx["source"] = fx.get("source", "")
     fx["odds_win"] = pd.to_numeric(fx.get("odds_win"), errors="coerce")
