@@ -2,9 +2,10 @@
 """Daily Football prediction pipeline.
 Pipeline stages:
 1) Fetch fixtures from global official APIs (api-sports.io + football-data.org)
-2) Build Poisson + Elo + ML + bookmaker fusion probabilities
-3) Generate Doubao (OpenAI compatible) LLM reasoning
-4) Export site JSON files used by GitHub Pages frontend
+2) Filter only top leagues: 五大联赛 + 欧冠 + 热门杯赛
+3) Build Poisson + Elo + ML + bookmaker fusion probabilities
+4) Generate Doubao (OpenAI compatible) LLM reasoning
+5) Export site JSON files used by GitHub Pages frontend
 """
 
 from __future__ import annotations
@@ -29,6 +30,40 @@ from src.models.ml_ensemble import compute_latest_team_form, predict_proba, trai
 from src.models.poisson_elo import FitModels, fit_poisson, predict as predict_pe, run_elo
 from src.models.upset import avoid_upset
 
+# ====================== 赛事筛选配置（可自行增删）======================
+# 仅保留以下关键词的赛事，大小写不敏感，支持模糊匹配
+ALLOWED_LEAGUE_KEYWORDS = [
+    # 核心：五大联赛
+    "premier league",  # 英超
+    "la liga",         # 西甲
+    "laliga",          # 西甲名称兼容
+    "bundesliga",      # 德甲（仅保留德甲，自动过滤德乙德丙）
+    "serie a",         # 意甲
+    "ligue 1",         # 法甲
+    # 核心：欧战
+    "champions league",# 欧冠
+    "europa league",   # 欧联杯（热门欧战）
+    "europa conference league", # 欧协联（可选热门）
+    # 热门国内杯赛（可自行删除不需要的）
+    "fa cup",          # 英格兰足总杯
+    "copa del rey",    # 西班牙国王杯
+    "dfb pokal",       # 德国杯
+    "coppa italia",    # 意大利杯
+]
+# 仅获取对应联赛的赔率数据，和上面的赛事筛选对应
+ODDS_SPORTS = [
+    "soccer_epl",
+    "soccer_spain_la_liga",
+    "soccer_germany_bundesliga",
+    "soccer_italy_serie_a",
+    "soccer_france_ligue_one",
+    "soccer_uefa_champs_league",
+    "soccer_uefa_europa_league",
+    "soccer_uefa_europa_conference_league",
+    "soccer_england_fa_cup",
+]
+# ========================================================================
+
 OUT_DIR = Path("site/data")
 PICKS_PATH = OUT_DIR / "picks.json"
 TOP_PATH = OUT_DIR / "top_picks.json"
@@ -39,15 +74,6 @@ TOP_N = 4
 W_PE = 0.50
 W_ML = 0.30
 W_BM = 0.20
-ODDS_SPORTS = [
-    "soccer_epl",
-    "soccer_spain_la_liga",
-    "soccer_germany_bundesliga",
-    "soccer_italy_serie_a",
-    "soccer_france_ligue_one",
-    "soccer_uefa_champs_league",
-    "soccer_uefa_europa_league",
-]
 
 
 @dataclass
@@ -128,6 +154,21 @@ def _team_name_quality(name: str) -> bool:
     if digit_ratio >= 0.6:
         return False
     return True
+
+
+# 新增：赛事白名单校验函数，统一过滤规则
+def is_allowed_league(league_name: str) -> bool:
+    if not league_name:
+        return False
+    league_lower = str(league_name).strip().lower()
+    # 过滤德乙、德丙等低级别联赛
+    if "bundesliga" in league_lower and re.search(r"[234]", league_lower):
+        return False
+    # 匹配白名单关键词
+    for keyword in ALLOWED_LEAGUE_KEYWORDS:
+        if keyword.lower() in league_lower:
+            return True
+    return False
 
 
 def probe_external_connections() -> Dict[str, object]:
@@ -281,7 +322,10 @@ def fetch_api_sports_fixtures(start: datetime, end: datetime) -> List[Dict[str, 
             resp.raise_for_status()
             items = (resp.json() or {}).get("response") or []
             for m in items:
-                league = ((m.get("league") or {}).get("name")) or "Global League"
+                league = ((m.get("league") or {}).get("name")) or ""
+                # 新增：仅保留白名单内的赛事，过滤小众联赛
+                if not is_allowed_league(league):
+                    continue
                 teams = m.get("teams") or {}
                 home = ((teams.get("home") or {}).get("name")) or ""
                 away = ((teams.get("away") or {}).get("name")) or ""
@@ -326,6 +370,10 @@ def fetch_football_data_fixtures(start: datetime, end: datetime) -> List[Dict[st
         resp.raise_for_status()
         items = (resp.json() or {}).get("matches") or []
         for m in items:
+            league = ((m.get("competition") or {}).get("name")) or ""
+            # 新增：仅保留白名单内的赛事，过滤小众联赛
+            if not is_allowed_league(league):
+                continue
             utc = m.get("utcDate", "")
             date = utc[:10] if len(utc) >= 10 else start.strftime("%Y-%m-%d")
             tm = utc[11:16] if len(utc) >= 16 else "00:00"
@@ -333,7 +381,7 @@ def fetch_football_data_fixtures(start: datetime, end: datetime) -> List[Dict[st
                 {
                     "date": date,
                     "time": tm,
-                    "league": ((m.get("competition") or {}).get("name")) or "Global League",
+                    "league": league,
                     "home": ((m.get("homeTeam") or {}).get("name")) or "",
                     "away": ((m.get("awayTeam") or {}).get("name")) or "",
                     "odds_win": None,
@@ -391,6 +439,9 @@ def load_jczq_fixtures() -> pd.DataFrame:
         fx["HomeTeam"].astype(str).map(_team_name_quality)
         & fx["AwayTeam"].astype(str).map(_team_name_quality)
     ].copy()
+    # 新增：最终二次过滤，确保仅保留白名单赛事
+    fx = fx[fx["League"].astype(str).map(is_allowed_league)].copy()
+    
     fx = fx.sort_values(["Date", "League", "HomeTeam"], ascending=[True, True, True])
     in_window = fx[(fx["Date"] >= today) & (fx["Date"] <= upper)].copy()
     
@@ -401,7 +452,7 @@ def load_jczq_fixtures() -> pd.DataFrame:
 
 
 def build_odds_lookup() -> Dict[Tuple[str, str], Tuple[Optional[float], Optional[float], Optional[float]]]:
-    # 仅用国外The Odds API获取实时赔率，无国内数据源
+    # 仅用国外The Odds API获取实时赔率，适配精简后的热门联赛
     key = env_value("ODDS_API_KEY", "THE_ODDS_API_KEY")
     if not valid_key(key):
         return {}
@@ -583,6 +634,7 @@ def build_llm_reason(cfg: LLMConfig, pick: Dict[str, object]) -> Tuple[str, str,
     # 仅用豆包生成分析，简化逻辑，保留兜底
     prompt = (
         f"比赛: {pick['home']} vs {pick['away']}\n"
+        f"赛事: {pick['league']}\n"
         f"胜平负概率: 主胜{pick['p_home']:.2f} 平局{pick['p_draw']:.2f} 客胜{pick['p_away']:.2f}\n"
         f"预期进球xG: {pick['xg_home']:.2f}-{pick['xg_away']:.2f}\n"
         f"投注推荐: {pick['pick']} 预期EV值={pick.get('ev', 0)}\n"
@@ -739,6 +791,7 @@ def build_payload(rows: List[Dict[str, object]], bt: Dict[str, object], llm_cfg:
             "generated_at_utc": utc_now_str(),
             "python": f"{os.sys.version_info.major}.{os.sys.version_info.minor}",
             "data_source": "api-sports.io + football-data.org + the-odds-api.com",
+            "league_scope": "五大联赛 + 欧冠 + 热门杯赛",
             "fusion": {
                 "W_PE": W_PE,
                 "W_ML": W_ML,
@@ -750,7 +803,6 @@ def build_payload(rows: List[Dict[str, object]], bt: Dict[str, object], llm_cfg:
                 "base_url": llm_cfg.base_url,
                 "usage": llm_used,
             },
-            "scope": "Global Top Football Leagues",
             "schedule_bjt": ["09:30", "21:30"],
         },
         "stats": {
@@ -819,17 +871,17 @@ def run() -> int:
     probe = probe_external_connections()
     print("[probe]", json.dumps(probe, ensure_ascii=False))
 
-    # 【核心修改】彻底移除国内澳客/500网爬虫代码，完全不会触发国内请求，彻底解决卡住问题
-    print(f"[1/4] 从国外API获取赛事数据 {utc_now_str()}")
+    # 【核心修改】彻底移除国内澳客/500网爬虫代码，完全不会触发国内请求
+    print(f"[1/4] 从国外API获取热门赛事数据 {utc_now_str()}")
 
-    # 加载赛事数据&历史数据，仅用国外API
-    print("[2/4] 加载赛事数据集")
+    # 加载赛事数据&历史数据，仅用国外API，自动过滤小众赛事
+    print("[2/4] 加载热门赛事数据集")
     fx = load_jczq_fixtures()
     history = load_history_df()
 
     # 多层兜底，保证流程不中断，页面可正常部署
     if fx.empty:
-        print("ERROR: 未从国外API获取到有效赛事数据")
+        print("ERROR: 未从国外API获取到有效热门赛事数据")
         # 复用上次成功结果兜底
         if PICKS_PATH.exists():
             try:
@@ -848,8 +900,8 @@ def run() -> int:
         payload = {
             "meta": {
                 "generated_at_utc": utc_now_str(),
-                "scope": "Global Top Football Leagues",
-                "error": "暂无有效赛事数据",
+                "league_scope": "五大联赛 + 欧冠 + 热门杯赛",
+                "error": "暂无有效热门赛事数据",
                 "warning": "已生成兜底数据，保证页面正常访问",
             },
             "stats": {"fixtures": 0, "top": 0, "backtest": {"matches_used": 0, "bets": 0, "roi": 0.0, "hit_rate": 0.0, "avg_ev": 0.0, "logloss": 0.0}},
@@ -860,7 +912,7 @@ def run() -> int:
         return 0
 
     # 多模型融合预测
-    print(f"[3/4] 多模型融合预测，赛事数量={len(fx)}，历史数据量={len(history)}")
+    print(f"[3/4] 多模型融合预测，热门赛事数量={len(fx)}，历史数据量={len(history)}")
     rows, bt = build_prediction_rows(fx, history)
 
     # 豆包AI分析+结果导出
@@ -875,7 +927,7 @@ def run() -> int:
     payload.setdefault("meta", {})["connection_probe"] = probe
     write_outputs(payload)
 
-    print(f"DONE 执行完成，精选推荐={len(payload['top_picks'])}，全量赛事={len(payload['all'])}")
+    print(f"DONE 执行完成，精选推荐={len(payload['top_picks'])}，全量热门赛事={len(payload['all'])}")
     return 0
 
 
