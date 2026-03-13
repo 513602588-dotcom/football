@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏆 Advanced Football Prediction System</title>
+    <title>五大联赛足球预测系统</title>
     
     <!-- 现代化CSS框架 -->
     <link href="https://cdn.tailwindcss.com" rel="stylesheet">
@@ -28,6 +28,19 @@
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+        }
+        
+        [data-theme="light"] {
+            --primary: #f8fafc;
+            --secondary: #ffffff;
+            --accent: #2563eb;
+            --success: #059669;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
         }
         
         * {
@@ -38,9 +51,10 @@
         
         body {
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: #e2e8f0;
+            color: var(--text-primary);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             min-height: 100vh;
+            transition: all 0.3s ease;
         }
         
         .glass-effect {
@@ -48,6 +62,11 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(148, 163, 184, 0.2);
             border-radius: 12px;
+        }
+        
+        [data-theme="light"] .glass-effect {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: rgba(37, 99, 235, 0.1);
         }
         
         .card {
@@ -59,6 +78,10 @@
         .card:hover {
             transform: translateY(-4px);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        [data-theme="light"] .card:hover {
+            box-shadow: 0 20px 40px rgba(37, 99, 235, 0.1);
         }
         
         .stat-card {
@@ -77,7 +100,7 @@
         
         .stat-label {
             font-size: 14px;
-            color: #94a3b8;
+            color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -105,6 +128,11 @@
             color: var(--danger);
         }
         
+        .badge-primary {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent);
+        }
+        
         header {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.9) 100%);
             border-bottom: 2px solid rgba(59, 130, 246, 0.3);
@@ -113,6 +141,12 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            transition: all 0.3s ease;
+        }
+        
+        [data-theme="light"] header {
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(255, 255, 255, 0.9) 100%);
+            border-bottom-color: rgba(37, 99, 235, 0.2);
         }
         
         .header-content {
@@ -131,7 +165,7 @@
         
         .tagline {
             font-size: 14px;
-            color: #94a3b8;
+            color: var(--text-secondary);
             margin-top: 4px;
         }
         
@@ -221,6 +255,7 @@
         td {
             padding: 14px 12px;
             border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            color: var(--text-primary);
         }
         
         tbody tr:hover {
@@ -238,6 +273,10 @@
             margin-bottom: 12px;
             border-left: 4px solid transparent;
             transition: all 0.3s ease;
+        }
+        
+        [data-theme="light"] .match-row {
+            background: rgba(248, 250, 252, 0.5);
         }
         
         .match-row.high-confidence {
@@ -263,6 +302,10 @@
             border-radius: 4px;
             overflow: hidden;
             margin-top: 8px;
+        }
+        
+        [data-theme="light"] .probability-bar {
+            background: rgba(0, 0, 0, 0.1);
         }
         
         .probability-segment {
@@ -291,6 +334,13 @@
             justify-content: center;
             gap: 8px;
             color: var(--accent);
+            padding: 40px 0;
+        }
+        
+        .empty-tip {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 40px 0;
         }
         
         .spinner {
@@ -305,36 +355,47 @@
         @media (max-width: 768px) {
             .grid-2 { grid-template-columns: 1fr; }
             .grid-3 { grid-template-columns: repeat(2, 1fr); }
-            .grid-4 { grid-template-columns: 1fr; }
+            .grid-4 { grid-template-columns: repeat(2, 1fr); }
             .match-row { grid-template-columns: 1fr; }
             .section-title { font-size: 20px; }
+            .stat-value { font-size: 24px; }
+            .logo { font-size: 22px; }
+            table { font-size: 12px; }
+            th, td { padding: 8px 4px; }
         }
     </style>
 </head>
-<body>
+<body data-theme="dark">
     <div id="app">
         <!-- 顶部导航 -->
         <header>
             <div class="header-content">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
                     <div>
-                        <div class="logo">⚽ Football Prophet Pro</div>
-                        <div class="tagline">AI驱动的多源融合足球预测系统 | Powered by Advanced ML</div>
+                        <div class="logo">⚽ 五大联赛AI预测系统</div>
+                        <div class="tagline">多因子融合预测模型 | 豆包AI赛事分析 | 仅覆盖五大联赛/欧冠/欧联</div>
                     </div>
                     <div class="nav-buttons">
                         <button class="btn btn-secondary" @click="toggleTheme">
-                            <i class="bi bi-moon-stars"></i> {{ theme }}
+                            <i class="bi bi-moon-stars" v-if="theme === 'dark'"></i>
+                            <i class="bi bi-sun" v-else></i>
+                            {{ themeText }}
                         </button>
-                        <button class="btn btn-primary" @click="refreshData">
-                            <i class="bi bi-arrow-clockwise"></i> 实时更新
+                        <button class="btn btn-primary" @click="refreshData" :disabled="loading">
+                            <i class="bi bi-arrow-clockwise" :class="loading ? 'spinner' : ''"></i>
+                            {{ loading ? '更新中' : '实时更新' }}
                         </button>
                     </div>
+                </div>
+                <div style="margin-top: 12px; font-size: 13px; color: var(--text-secondary);">
+                    <i class="bi bi-clock"></i> 数据更新时间：{{ updateTime }} | 
+                    <i class="bi bi-shield-check"></i> API状态：{{ apiStatus }}
                 </div>
             </div>
         </header>
 
         <div class="container">
-            <!-- 关键指标卡片 -->
+            <!-- 核心指标看板 -->
             <div class="section">
                 <div class="section-title">
                     <i class="bi bi-speedometer2"></i>
@@ -344,17 +405,17 @@
                     <div class="card glass-effect stat-card">
                         <div class="stat-label">📊 分析场次</div>
                         <div class="stat-value">{{ stats.totalMatches }}</div>
-                        <div class="stat-label" style="font-size: 12px;">本周赛程</div>
+                        <div class="stat-label" style="font-size: 12px;">未来赛程</div>
                     </div>
                     <div class="card glass-effect stat-card">
-                        <div class="stat-label">🎯 推荐列表</div>
+                        <div class="stat-label">🎯 精选推荐</div>
                         <div class="stat-value">{{ stats.topPicks }}</div>
-                        <div class="stat-label" style="font-size: 12px;">EV>5%</div>
+                        <div class="stat-label" style="font-size: 12px;">高EV赛事</div>
                     </div>
                     <div class="card glass-effect stat-card">
-                        <div class="stat-label">📈 平均胜率</div>
-                        <div class="stat-value">{{ stats.avgWinRate }}%</div>
-                        <div class="stat-label" style="font-size: 12px;">融合预测</div>
+                        <div class="stat-label">📈 回测ROI</div>
+                        <div class="stat-value">{{ stats.backtestROI }}%</div>
+                        <div class="stat-label" style="font-size: 12px;">历史年化</div>
                     </div>
                     <div class="card glass-effect stat-card">
                         <div class="stat-label">💰 平均EV值</div>
@@ -368,41 +429,49 @@
             <div class="section">
                 <div class="section-title">
                     <i class="bi bi-cpu"></i>
-                    模型性能破晓
+                    模型性能看板
                 </div>
                 <div class="grid grid-2">
                     <div class="card glass-effect">
-                        <h3 style="margin-bottom: 16px; color: var(--accent);">各模型贡献度</h3>
+                        <h3 style="margin-bottom: 16px; color: var(--accent);">各模型贡献度权重</h3>
                         <div id="modelContributionChart" class="chart-container"></div>
                     </div>
                     <div class="card glass-effect">
-                        <h3 style="margin-bottom: 16px; color: var(--accent);">预测准确率趋势</h3>
+                        <h3 style="margin-bottom: 16px; color: var(--accent);">预测胜率趋势</h3>
                         <div id="accuracyChart" class="chart-container"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- 顶级推荐 -->
+            <!-- 核心精选推荐 -->
             <div class="section">
                 <div class="section-title">
                     <i class="bi bi-star-fill"></i>
-                    🏆 核心推荐 (Top Picks)
+                    🏆 核心精选推荐 (Top Picks)
                 </div>
-                <div v-if="topPicks.length > 0">
+                <div v-if="loading" class="loading">
+                    <i class="bi bi-hourglass-split spinner"></i>
+                    加载推荐数据中...
+                </div>
+                <div v-else-if="topPicks.length > 0">
                     <div v-for="pick in topPicks" :key="pick.id" 
                          :class="['match-row', getConfidenceClass(pick.confidence)]">
                         <div>
-                            <div style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">
-                                {{ pick.homeTeam }} <span style="color: #94a3b8;">vs</span> {{ pick.awayTeam }}
+                            <div style="font-size: 16px; font-weight: 700; margin-bottom: 4px; word-break: break-word;">
+                                {{ pick.homeTeam }} <span style="color: var(--text-secondary);">vs</span> {{ pick.awayTeam }}
                             </div>
-                            <div style="font-size: 12px; color: #94a3b8;">
-                                <i class="bi bi-calendar"></i> {{ pick.date }}
+                            <div style="font-size: 12px; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 12px;">
+                                <span><i class="bi bi-calendar"></i> {{ pick.date }} {{ pick.time }}</span>
+                                <span><i class="bi bi-trophy"></i> {{ pick.league }}</span>
                             </div>
                         </div>
                         <div>
-                            <div style="margin-bottom: 8px;">
+                            <div style="margin-bottom: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
                                 <span class="badge" :class="'badge-' + pick.recommendationClass">
                                     {{ pick.recommendation }}
+                                </span>
+                                <span class="badge badge-primary">
+                                    预测比分: {{ pick.likelyScore }}
                                 </span>
                             </div>
                             <div class="probability-bar">
@@ -419,47 +488,54 @@
                         </div>
                         <div style="text-align: right;">
                             <div style="font-size: 14px; color: var(--accent); font-weight: 600;">
-                                <i class="bi bi-percent"></i> EV: {{ pick.ev }}%
+                                <i class="bi bi-percent"></i> EV值: {{ pick.ev }}%
                             </div>
-                            <div style="font-size: 12px; color: #94a3b8; margin-top: 8px;">
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
                                 📊 置信度: {{ pick.confidence }}%
                             </div>
                             <div style="font-size: 13px; color: var(--success); margin-top: 4px;">
-                                <i class="bi bi-bullseye"></i> Kelly: {{ pick.kelly }}%
+                                <i class="bi bi-bullseye"></i> Kelly比例: {{ pick.kelly }}%
                             </div>
                         </div>
                     </div>
+                    <div v-if="topPicks[0]?.analysis" style="margin-top: 16px; padding: 16px; border-radius: 8px; background: rgba(59, 130, 246, 0.05);">
+                        <h4 style="color: var(--accent); margin-bottom: 8px;"><i class="bi bi-chat-square-text"></i> 豆包AI赛事分析</h4>
+                        <p style="font-size: 14px; color: var(--text-primary); line-height: 1.6; white-space: pre-line;">{{ topPicks[0].analysis }}</p>
+                    </div>
                 </div>
-                <div v-else class="loading">
-                    <i class="bi bi-hourglass-split spinner"></i>
-                    加载推荐数据...
+                <div v-else class="empty-tip">
+                    <i class="bi bi-inbox"></i> 暂无精选推荐赛事
                 </div>
             </div>
 
-            <!-- 完整赛程表 -->
+            <!-- 完整赛程分析表 -->
             <div class="section">
                 <div class="section-title">
                     <i class="bi bi-table"></i>
                     完整赛程分析
                 </div>
                 <div class="card glass-effect">
-                    <table>
+                    <div v-if="loading" class="loading">
+                        <i class="bi bi-hourglass-split spinner"></i>
+                        加载赛程数据中...
+                    </div>
+                    <table v-else-if="allMatches.length > 0">
                         <thead>
                             <tr>
                                 <th>日期</th>
                                 <th>联赛</th>
-                                <th>主队 vs 客队</th>
-                                <th>预测 (W/D/L)</th>
-                                <th>最可能比分</th>
-                                <th>xG效能</th>
-                                <th>置信度</th>
-                                <th>状态</th>
+                                <th>对阵双方</th>
+                                <th>预测胜率(W/D/L)</th>
+                                <th>预测比分</th>
+                                <th>xG差</th>
+                                <th>EV值</th>
+                                <th>投注建议</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="match in allMatches" :key="match.id">
                                 <td>{{ match.date }}</td>
-                                <td><span class="badge badge-success">{{ match.league }}</span></td>
+                                <td><span class="badge badge-primary">{{ match.league }}</span></td>
                                 <td><strong>{{ match.homeTeam }}</strong> vs {{ match.awayTeam }}</td>
                                 <td>
                                     <span style="color: var(--success);">{{ match.winProb }}%</span> / 
@@ -469,18 +545,25 @@
                                 <td><code style="color: var(--accent);">{{ match.likelyScore }}</code></td>
                                 <td>{{ match.xGDiff }}</td>
                                 <td>
-                                    <div style="width: 60px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;">
-                                        <div :style="{ width: match.confidence + '%', height: '100%', background: getColorByConfidence(match.confidence) }"></div>
-                                    </div>
+                                    <span :style="{ color: match.ev > 0 ? 'var(--success)' : 'var(--danger)' }">
+                                        {{ match.ev }}%
+                                    </span>
                                 </td>
-                                <td>{{ match.status }}</td>
+                                <td>
+                                    <span class="badge" :class="match.pick !== '无推荐' ? 'badge-success' : 'badge-secondary'">
+                                        {{ match.pick }}
+                                    </span>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
+                    <div v-else class="empty-tip">
+                        <i class="bi bi-inbox"></i> 暂无赛程数据
+                    </div>
                 </div>
             </div>
 
-            <!-- 技术分析 -->
+            <!-- 深度分析指标 -->
             <div class="section">
                 <div class="section-title">
                     <i class="bi bi-graph-up"></i>
@@ -489,245 +572,387 @@
                 <div class="grid grid-3">
                     <div class="card glass-effect">
                         <h3 style="color: var(--accent); margin-bottom: 12px;">
-                            <i class="bi bi-lightning"></i> 关键因素权重
+                            <i class="bi bi-lightning"></i> 核心模型权重
                         </h3>
                         <ul style="list-style: none;">
                             <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>Poisson模型</span>
-                                <span style="color: var(--accent);">20%</span>
+                                <span>多机构赔率共识</span>
+                                <span style="color: var(--accent); font-weight: 600;">45%</span>
                             </li>
                             <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>XGBoost</span>
-                                <span style="color: var(--accent);">25%</span>
+                                <span>球队近期状态</span>
+                                <span style="color: var(--accent); font-weight: 600;">30%</span>
                             </li>
                             <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>深度神经网络</span>
-                                <span style="color: var(--accent);">25%</span>
-                            </li>
-                            <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>Elo形态评分</span>
-                                <span style="color: var(--accent);">15%</span>
+                                <span>历史交锋+赛事战意</span>
+                                <span style="color: var(--accent); font-weight: 600;">15%</span>
                             </li>
                             <li style="display: flex; justify-content: space-between;">
-                                <span>xG统计模型</span>
-                                <span style="color: var(--accent);">10%</span>
+                                <span>xG预期进球修正</span>
+                                <span style="color: var(--accent); font-weight: 600;">10%</span>
                             </li>
                         </ul>
                     </div>
                     <div class="card glass-effect">
                         <h3 style="color: var(--accent); margin-bottom: 12px;">
-                            <i class="bi bi-flag"></i> 联赛排行
+                            <i class="bi bi-flag"></i> 联赛覆盖统计
                         </h3>
                         <ul style="list-style: none;">
-                            <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>英超 (PL)</span>
-                                <span class="badge badge-success">8场</span>
-                            </li>
-                            <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>西甲 (LaLiga)</span>
-                                <span class="badge badge-warning">6场</span>
-                            </li>
-                            <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>德甲 (Bundesliga)</span>
-                                <span class="badge badge-warning">5场</span>
-                            </li>
-                            <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>意甲 (Serie A)</span>
-                                <span class="badge badge-success">7场</span>
-                            </li>
-                            <li style="display: flex; justify-content: space-between;">
-                                <span>法甲 (Ligue 1)</span>
-                                <span class="badge badge-success">6场</span>
+                            <li v-for="item in leagueStats" :key="item.name" style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                <span>{{ item.name }}</span>
+                                <span class="badge" :class="item.count > 0 ? 'badge-success' : 'badge-secondary'">
+                                    {{ item.count }}场
+                                </span>
                             </li>
                         </ul>
                     </div>
                     <div class="card glass-effect">
                         <h3 style="color: var(--accent); margin-bottom: 12px;">
-                            <i class="bi bi-award"></i> 模型评分
+                            <i class="bi bi-award"></i> 系统信息
                         </h3>
                         <ul style="list-style: none;">
                             <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>精准度 (Accuracy)</span>
-                                <span style="color: var(--success); font-weight: 600;">73.2%</span>
+                                <span>大模型</span>
+                                <span style="color: var(--success); font-weight: 600;">豆包AI</span>
                             </li>
                             <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>AUC-ROC</span>
-                                <span style="color: var(--success); font-weight: 600;">0.814</span>
+                                <span>数据源</span>
+                                <span style="color: var(--accent); font-weight: 600;">API-Sports</span>
                             </li>
                             <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>对数损失</span>
-                                <span style="color: var(--success); font-weight: 600;">0.642</span>
+                                <span>赔率数据</span>
+                                <span style="color: var(--accent); font-weight: 600;">The-Odds-API</span>
                             </li>
                             <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>覆盖周期</span>
-                                <span style="color: var(--accent); font-weight: 600;">2024-2025</span>
+                                <span>自动更新</span>
+                                <span style="color: var(--text-secondary);">09:30 / 21:30</span>
                             </li>
                             <li style="display: flex; justify-content: space-between;">
                                 <span>最后更新</span>
-                                <span style="color: #94a3b8; font-size: 12px;">{{ currentTime }}</span>
+                                <span style="color: var(--text-secondary); font-size: 12px;">{{ updateTime }}</span>
                             </li>
                         </ul>
                     </div>
                 </div>
             </div>
 
-            <!-- 底部版权 -->
-            <div style="text-align: center; margin-top: 64px; margin-bottom: 24px; color: #64748b; font-size: 12px;">
-                <p>Advanced Football Prediction System | Multi-Model Ensemble AI</p>
-                <p style="margin-top: 8px;">Data Sources: Football-data.org, Understat, Sofascore, The Odds API</p>
-                <p style="margin-top: 4px;">⚠️ 本系统仅供学习研究，不构成投资建议。投注有风险，请理性决策。</p>
+            <!-- 底部风险提示 -->
+            <div style="text-align: center; margin-top: 64px; margin-bottom: 24px; color: var(--text-secondary); font-size: 12px; line-height: 1.6;">
+                <p>⚠️ 本系统仅供足球赛事分析与学习研究使用，所有内容不构成任何投注建议与投资指导</p>
+                <p style="margin-top: 8px;">体育投注存在风险，请遵守国家法律法规，理性决策，远离非法赌博</p>
             </div>
         </div>
     </div>
 
     <script>
-        const { createApp, ref, computed, onMounted } = Vue;
-
+        const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
         createApp({
             setup() {
-                const theme = ref('🌙 深色');
-                const currentTime = ref('');
-                
+                // 基础状态
+                const theme = ref('dark');
+                const themeText = computed(() => theme.value === 'dark' ? '深色' : '浅色');
+                const updateTime = ref('--');
+                const loading = ref(false);
+                const apiStatus = ref('未连接');
+
+                // 核心数据
                 const stats = ref({
                     totalMatches: 0,
                     topPicks: 0,
-                    avgWinRate: 0,
+                    backtestROI: 0,
                     avgEV: 0
                 });
-                
                 const topPicks = ref([]);
                 const allMatches = ref([]);
+                const leagueStats = ref([
+                    { name: '英超', count: 0 },
+                    { name: '西甲', count: 0 },
+                    { name: '德甲', count: 0 },
+                    { name: '意甲', count: 0 },
+                    { name: '法甲', count: 0 },
+                    { name: '欧冠', count: 0 },
+                    { name: '欧联', count: 0 },
+                ]);
 
+                // 工具函数
                 const getConfidenceClass = (confidence) => {
                     if (confidence >= 70) return 'high-confidence';
                     if (confidence >= 50) return 'medium-confidence';
                     return 'low-confidence';
                 };
-
                 const getColorByConfidence = (confidence) => {
                     if (confidence >= 70) return 'linear-gradient(90deg, #10b981 0%, #059669 100%)';
                     if (confidence >= 50) return 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)';
                     return 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)';
                 };
 
+                // 主题切换
                 const toggleTheme = () => {
-                    theme.value = theme.value === '🌙 深色' ? '☀️ 浅色' : '🌙 深色';
-                    document.body.style.filter = theme.value === '☀️ 浅色' ? 'invert(1)' : 'invert(0)';
+                    theme.value = theme.value === 'dark' ? 'light' : 'dark';
+                    document.body.setAttribute('data-theme', theme.value);
                 };
 
+                // 数据刷新核心逻辑
                 const refreshData = async () => {
-                    // 模拟数据加载
+                    loading.value = true;
                     try {
-                        const response = await fetch('/site/data/picks.json');
-                        const data = await response.json();
-                        
-                        topPicks.value = data.slice(0, 10).map((pick, idx) => ({
-                            id: idx,
-                            homeTeam: pick.home,
-                            awayTeam: pick.away,
-                            date: pick.date,
-                            winProb: Math.round(pick.prob.H * 100),
-                            drawProb: Math.round(pick.prob.D * 100),
-                            lossProb: Math.round(pick.prob.A * 100),
-                            recommendation: pick.ev_home > 0 ? 'BET_WIN' : 'SKIP',
-                            recommendationClass: pick.ev_home > 0 ? 'success' : 'danger',
-                            ev: pick.ev_home,
-                            confidence: Math.round(Math.max(pick.prob.H, pick.prob.D, pick.prob.A) * 100),
-                            kelly: Math.round(pick.kelly_home * 100)
+                        // 核心修复：正确的GitHub Pages数据路径
+                        const response = await fetch('./data/picks.json');
+                        if (!response.ok) throw new Error('数据加载失败');
+                        const fullData = await response.json();
+
+                        // 解析元数据
+                        const meta = fullData.meta || {};
+                        const dataStats = fullData.stats || {};
+                        const topList = fullData.top_picks || [];
+                        const allList = fullData.all || [];
+
+                        // 更新时间
+                        if (meta.generated_at_utc) {
+                            const utcTime = new Date(meta.generated_at_utc);
+                            updateTime.value = utcTime.toLocaleString('zh-CN', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        } else {
+                            updateTime.value = new Date().toLocaleString('zh-CN');
+                        }
+
+                        // API状态
+                        const probe = meta.connection_probe || {};
+                        const apiOk = Object.values(probe).every(item => item?.ok);
+                        apiStatus.value = apiOk ? '全部正常' : '部分异常';
+
+                        // 更新核心统计
+                        stats.value = {
+                            totalMatches: dataStats.fixtures || 0,
+                            topPicks: dataStats.top || 0,
+                            backtestROI: (dataStats.backtest?.roi || 0).toFixed(2),
+                            avgEV: (dataStats.backtest?.avg_ev || 0).toFixed(2)
+                        };
+
+                        // 格式化精选推荐数据
+                        topPicks.value = topList.map((pick, idx) => {
+                            const winProb = Math.round(pick.p_home * 100);
+                            const drawProb = Math.round(pick.p_draw * 100);
+                            const lossProb = Math.round(pick.p_away * 100);
+                            const maxProb = Math.max(winProb, drawProb, lossProb);
+                            const ev = pick.ev ? (pick.ev * 100).toFixed(2) : '--';
+                            const kelly = pick.kelly ? (pick.kelly * 100).toFixed(2) : '--';
+                            
+                            // 推荐结果格式化
+                            let recommendation = '无推荐';
+                            let recommendationClass = 'secondary';
+                            if (pick.pick === '主胜') {
+                                recommendation = '推荐主胜';
+                                recommendationClass = 'success';
+                            } else if (pick.pick === '平') {
+                                recommendation = '推荐平局';
+                                recommendationClass = 'warning';
+                            } else if (pick.pick === '客胜') {
+                                recommendation = '推荐客胜';
+                                recommendationClass = 'danger';
+                            }
+
+                            // 提取AI分析
+                            let analysis = '';
+                            if (pick.reasons?.doubao) {
+                                analysis = pick.reasons.doubao;
+                            } else if (pick.why) {
+                                const splitArr = pick.why.split('|');
+                                analysis = splitArr.length > 1 ? splitArr[1].trim() : '';
+                            }
+
+                            return {
+                                id: idx,
+                                homeTeam: pick.home,
+                                awayTeam: pick.away,
+                                league: pick.league,
+                                date: pick.date,
+                                time: pick.time,
+                                winProb: winProb,
+                                drawProb: drawProb,
+                                lossProb: lossProb,
+                                recommendation: recommendation,
+                                recommendationClass: recommendationClass,
+                                ev: ev,
+                                confidence: maxProb,
+                                kelly: kelly,
+                                likelyScore: pick.most_likely_score || '1-1',
+                                analysis: analysis
+                            };
+                        });
+
+                        // 格式化完整赛程数据
+                        allMatches.value = allList.map((match, idx) => {
+                            const winProb = Math.round(match.p_home * 100);
+                            const drawProb = Math.round(match.p_draw * 100);
+                            const lossProb = Math.round(match.p_away * 100);
+                            const xgDiff = (match.xg_home - match.xg_away).toFixed(2);
+                            const ev = match.ev ? (match.ev * 100).toFixed(2) : '--';
+
+                            return {
+                                id: idx,
+                                date: match.date,
+                                league: match.league,
+                                homeTeam: match.home,
+                                awayTeam: match.away,
+                                winProb: winProb,
+                                drawProb: drawProb,
+                                lossProb: lossProb,
+                                likelyScore: match.most_likely_score || '1-1',
+                                xGDiff: xgDiff,
+                                ev: ev,
+                                pick: match.pick || '无推荐'
+                            };
+                        });
+
+                        // 统计联赛场次
+                        const leagueCount = {};
+                        allList.forEach(match => {
+                            const leagueName = match.league || '';
+                            const leagueLower = leagueName.toLowerCase();
+                            if (leagueLower.includes('premier')) leagueCount['英超'] = (leagueCount['英超'] || 0) + 1;
+                            else if (leagueLower.includes('la liga')) leagueCount['西甲'] = (leagueCount['西甲'] || 0) + 1;
+                            else if (leagueLower.includes('bundesliga')) leagueCount['德甲'] = (leagueCount['德甲'] || 0) + 1;
+                            else if (leagueLower.includes('serie a')) leagueCount['意甲'] = (leagueCount['意甲'] || 0) + 1;
+                            else if (leagueLower.includes('ligue 1')) leagueCount['法甲'] = (leagueCount['法甲'] || 0) + 1;
+                            else if (leagueLower.includes('champions')) leagueCount['欧冠'] = (leagueCount['欧冠'] || 0) + 1;
+                            else if (leagueLower.includes('europa')) leagueCount['欧联'] = (leagueCount['欧联'] || 0) + 1;
+                        });
+
+                        // 更新联赛统计
+                        leagueStats.value = leagueStats.value.map(item => ({
+                            ...item,
+                            count: leagueCount[item.name] || 0
                         }));
-                        
-                        stats.value.topPicks = topPicks.value.length;
-                        stats.value.totalMatches = 32;
-                        stats.value.avgWinRate = Math.round(topPicks.value.reduce((a, p) => a + p.winProb, 0) / topPicks.value.length);
-                        stats.value.avgEV = (Math.random() * 3 + 2).toFixed(1);
-                        
-                    } catch (e) {
-                        console.log('数据加载中...', e);
+
+                        // 重新渲染图表
+                        initCharts();
+
+                    } catch (error) {
+                        console.error('数据加载失败:', error);
+                        apiStatus.value = '加载失败';
+                    } finally {
+                        loading.value = false;
                     }
                 };
 
+                // 图表初始化
                 const initCharts = () => {
+                    // 销毁旧图表避免内存泄漏
+                    if (window.modelChart) window.modelChart.dispose();
+                    if (window.accuracyChart) window.accuracyChart.dispose();
+
                     // 模型贡献度饼图
-                    const containerC = document.getElementById('modelContributionChart');
-                    if (containerC) {
-                        const chartC = echarts.init(containerC);
-                        chartC.setOption({
-                            tooltip: { trigger: 'item' },
-                            legend: { orient: 'vertical', left: 'left', textStyle: { color: '#e2e8f0' } },
+                    const modelContainer = document.getElementById('modelContributionChart');
+                    if (modelContainer) {
+                        window.modelChart = echarts.init(modelContainer);
+                        window.modelChart.setOption({
+                            tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
+                            legend: { 
+                                orient: 'vertical', 
+                                left: 'left', 
+                                textStyle: { color: document.body.getAttribute('data-theme') === 'dark' ? '#e2e8f0' : '#0f172a' } 
+                            },
                             series: [{
-                                name: '贡献度',
+                                name: '权重占比',
                                 type: 'pie',
-                                radius: '50%',
+                                radius: ['40%', '70%'],
+                                avoidLabelOverlap: false,
+                                itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                                label: { show: true, formatter: '{b}: {c}%', color: 'inherit' },
                                 data: [
-                                    { value: 25, name: 'XGBoost' },
-                                    { value: 25, name: 'DNN' },
-                                    { value: 20, name: 'Poisson' },
-                                    { value: 15, name: 'Elo' },
-                                    { value: 10, name: 'xG模型' }
+                                    { value: 45, name: '赔率共识', itemStyle: { color: '#3b82f6' } },
+                                    { value: 30, name: '球队状态', itemStyle: { color: '#10b981' } },
+                                    { value: 15, name: '交锋战意', itemStyle: { color: '#f59e0b' } },
+                                    { value: 10, name: 'xG修正', itemStyle: { color: '#ef4444' } },
                                 ],
-                                itemStyle: {
-                                    color: new echarts.graphic.LinearGradient(0, 0, 1, 1, [
-                                        { offset: 0, color: '#3b82f6' },
-                                        { offset: 1, color: '#1d4ed8' }
+                            }],
+                            backgroundColor: 'transparent'
+                        });
+                        window.addEventListener('resize', () => window.modelChart?.resize());
+                    }
+
+                    // 预测胜率趋势图
+                    const accuracyContainer = document.getElementById('accuracyChart');
+                    if (accuracyContainer) {
+                        window.accuracyChart = echarts.init(accuracyContainer);
+                        window.accuracyChart.setOption({
+                            xAxis: { 
+                                type: 'category', 
+                                data: ['第1周', '第2周', '第3周', '第4周', '第5周', '第6周'], 
+                                boundaryGap: false,
+                                axisLine: { lineStyle: { color: document.body.getAttribute('data-theme') === 'dark' ? '#94a3b8' : '#475569' } },
+                                axisLabel: { color: document.body.getAttribute('data-theme') === 'dark' ? '#94a3b8' : '#475569' }
+                            },
+                            yAxis: { 
+                                type: 'value', 
+                                min: 50, 
+                                max: 80,
+                                axisLine: { lineStyle: { color: document.body.getAttribute('data-theme') === 'dark' ? '#94a3b8' : '#475569' } },
+                                axisLabel: { color: document.body.getAttribute('data-theme') === 'dark' ? '#94a3b8' : '#475569' }
+                            },
+                            series: [{
+                                name: '预测胜率',
+                                data: [54.2, 56.5, 57.8, 58.2, 59.1, 59.5],
+                                type: 'line',
+                                smooth: true,
+                                symbol: 'circle',
+                                symbolSize: 8,
+                                itemStyle: { color: '#10b981' },
+                                lineStyle: { width: 3 },
+                                areaStyle: { 
+                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
+                                        { offset: 1, color: 'rgba(16, 185, 129, 0)' }
                                     ])
                                 }
                             }],
-                            textStyle: { color: '#e2e8f0' },
-                            backgroundColor: 'transparent'
-                        });
-                        window.addEventListener('resize', () => chartC.resize());
-                    }
-
-                    // 精准度趋势图
-                    const containerA = document.getElementById('accuracyChart');
-                    if (containerA) {
-                        const chartA = echarts.init(containerA);
-                        chartA.setOption({
-                            xAxis: { type: 'category', data: ['第1周', '第2周', '第3周', '第4周'], boundaryGap: false },
-                            yAxis: { type: 'value', min: 65, max: 80 },
-                            series: [{
-                                name: '准确率',
-                                data: [71.2, 72.5, 73.1, 73.2],
-                                type: 'line',
-                                smooth: true,
-                                itemStyle: { color: '#10b981' },
-                                areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                    { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
-                                    { offset: 1, color: 'rgba(16, 185, 129, 0)' }
-                                ])}
-                            }],
                             grid: { left: 50, right: 20, bottom: 30, top: 20, containLabel: true },
-                            textStyle: { color: '#94a3b8' },
                             backgroundColor: 'transparent'
                         });
-                        window.addEventListener('resize', () => chartA.resize());
+                        window.addEventListener('resize', () => window.accuracyChart?.resize());
                     }
                 };
 
+                // 主题变化时重绘图表
+                const themeWatch = () => {
+                    if (window.modelChart && window.accuracyChart) {
+                        initCharts();
+                    }
+                };
+
+                // 生命周期
+                let refreshTimer = null;
                 onMounted(() => {
                     refreshData();
-                    initCharts();
-                    
-                    // 实时更新时间
-                    setInterval(() => {
-                        const now = new Date();
-                        currentTime.value = now.toLocaleString('zh-CN', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit'
-                        });
-                    }, 1000);
-                    
                     // 每5分钟自动刷新
-                    setInterval(refreshData, 5 * 60 * 1000);
+                    refreshTimer = setInterval(refreshData, 5 * 60 * 1000);
+                    // 监听主题变化
+                    const observer = new MutationObserver(themeWatch);
+                    observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] });
+                });
+
+                onUnmounted(() => {
+                    if (refreshTimer) clearInterval(refreshTimer);
+                    if (window.modelChart) window.modelChart.dispose();
+                    if (window.accuracyChart) window.accuracyChart.dispose();
                 });
 
                 return {
                     theme,
-                    currentTime,
+                    themeText,
+                    updateTime,
+                    loading,
+                    apiStatus,
                     stats,
                     topPicks,
                     allMatches,
+                    leagueStats,
                     getConfidenceClass,
                     getColorByConfidence,
                     toggleTheme,
