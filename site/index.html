@@ -8,6 +8,272 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* 内置基础样式，避免style.css加载失败导致页面错乱 */
+    :root {
+      --primary: #0a0e27;
+      --secondary: #141a35;
+      --accent: #ff9500;
+      --success: #00c48c;
+      --warning: #ffab00;
+      --danger: #ff3d57;
+      --text-primary: #ffffff;
+      --text-secondary: #a0aec0;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Serif SC', sans-serif;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    .hero-wrap {
+      padding: 40px 0;
+      background: rgba(10, 14, 39, 0.8);
+      border-bottom: 1px solid rgba(255, 149, 0, 0.2);
+    }
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .brand {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--accent);
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 2px;
+    }
+    .sub {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+    .btn {
+      padding: 10px 20px;
+      background: rgba(255, 149, 0, 0.1);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+    .btn:hover {
+      background: var(--accent);
+      color: var(--primary);
+    }
+    .meta {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 10px 0;
+    }
+    .schedule {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 30px;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      padding: 20px;
+      background: rgba(20, 26, 53, 0.6);
+      border: 1px solid rgba(160, 174, 192, 0.1);
+      border-radius: 12px;
+    }
+    .card .k {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+    .card .v {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    section {
+      margin: 40px 0;
+    }
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--text-primary);
+    }
+    .hint {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 15px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      background: rgba(20, 26, 53, 0.6);
+      border-radius: 12px;
+      border: 1px solid rgba(160, 174, 192, 0.1);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+    }
+    th {
+      padding: 15px;
+      text-align: left;
+      background: rgba(255, 149, 0, 0.1);
+      color: var(--accent);
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255, 149, 0, 0.2);
+    }
+    td {
+      padding: 12px 15px;
+      border-bottom: 1px solid rgba(160, 174, 192, 0.1);
+      color: var(--text-primary);
+    }
+    tbody tr:hover {
+      background: rgba(255, 149, 0, 0.05);
+    }
+    .pick-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    .pick-card {
+      padding: 20px;
+      background: rgba(20, 26, 53, 0.6);
+      border: 1px solid rgba(255, 149, 0, 0.2);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+    .pick-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(255, 149, 0, 0.2);
+    }
+    .pick-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .pick-teams {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .pick-teams span {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+    .pick-score {
+      text-align: center;
+      font-size: 14px;
+      color: var(--accent);
+      margin-bottom: 15px;
+    }
+    .prob-bar {
+      display: flex;
+      height: 24px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+    .prob-win {
+      background: var(--success);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+    }
+    .prob-draw {
+      background: var(--warning);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+    }
+    .prob-loss {
+      background: var(--danger);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+    }
+    .pick-footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .pick-recommend {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .pick-ev {
+      color: var(--success);
+      font-weight: 700;
+    }
+    .pick-kelly {
+      color: var(--warning);
+      font-weight: 700;
+    }
+    .footer {
+      text-align: center;
+      padding: 30px 0;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .empty-tip {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--text-secondary);
+    }
+    .error-tip {
+      text-align: center;
+      padding: 20px;
+      background: rgba(255, 61, 87, 0.1);
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      color: var(--danger);
+      margin: 20px 0;
+    }
+    @media (max-width: 768px) {
+      .brand {
+        font-size: 32px;
+      }
+      .cards {
+        grid-template-columns: 1fr 1fr;
+      }
+      .card .v {
+        font-size: 24px;
+      }
+      h2 {
+        font-size: 22px;
+      }
+    }
+  </style>
 </head>
 <body>
 <header class="hero-wrap">
@@ -89,7 +355,12 @@
 <script>
 // 全局数据存储
 let fullData = null;
-const DATA_PATH = './data/picks.json';
+// 兼容GitHub Pages的多路径适配
+const DATA_PATHS = [
+  './data/picks.json',
+  '/data/picks.json',
+  `${window.location.pathname.replace(/\/$/, '')}/data/picks.json`
+];
 
 // 日/夜主题切换
 const themeBtn = document.getElementById('theme');
@@ -97,6 +368,18 @@ themeBtn.addEventListener('click', () => {
   document.body.classList.toggle('light-theme');
   const isLight = document.body.classList.contains('light-theme');
   themeBtn.textContent = isLight ? '切换夜间' : '切换日/夜';
+  // 浅色主题样式适配
+  if (isLight) {
+    document.documentElement.style.setProperty('--primary', '#f8fafc');
+    document.documentElement.style.setProperty('--secondary', '#ffffff');
+    document.documentElement.style.setProperty('--text-primary', '#0a0e27');
+    document.documentElement.style.setProperty('--text-secondary', '#4a5568');
+  } else {
+    document.documentElement.style.setProperty('--primary', '#0a0e27');
+    document.documentElement.style.setProperty('--secondary', '#141a35');
+    document.documentElement.style.setProperty('--text-primary', '#ffffff');
+    document.documentElement.style.setProperty('--text-secondary', '#a0aec0');
+  }
 });
 
 // 数字格式化工具
@@ -173,7 +456,8 @@ function renderTopCards() {
     const winProb = formatPercent(pick.p_home);
     const drawProb = formatPercent(pick.p_draw);
     const lossProb = formatPercent(pick.p_away);
-    const ev = pick.ev ? formatPercent(pick.ev
+    const ev = pick.ev ? formatPercent(pick.ev) : '-';
+    const kelly = pick.kelly ? formatPercent(pick.kelly) : '-';
     const pickLabel = pick.pick || '无推荐';
     const score = pick.most_likely_score || '1-1';
 
@@ -184,16 +468,15 @@ function renderTopCards() {
           <span class="pick-time">${pick.date} ${pick.time}</span>
         </div>
         <div class="pick-teams">
-         >vs</span>
+          <strong>${pick.home}</strong>
+          <span>vs</span>
           <strong>${pick.away}</strong>
         </div>
         <div class="pick-score">预测比分: <code>${score}</code></div>
-        <div class="pick-prob">
-          <div class="prob-bar">
-            <div class="prob-win" style="width: ${pick.p_home * 100}%">胜 ${winProb}</div>
-            <div class="prob-draw" style="width: ${pick.p_draw * 100}%">平 ${drawProb}</div>
-            <div class="prob-loss" style="width: ${pick.p_away * 100}%">负 ${lossProb}</div>
-          </div>
+        <div class="prob-bar">
+          <div class="prob-win" style="width: ${pick.p_home * 100}%">胜 ${winProb}</div>
+          <div class="prob-draw" style="width: ${pick.p_draw * 100}%">平 ${drawProb}</div>
+          <div class="prob-loss" style="width: ${pick.p_away * 100}%">负 ${lossProb}</div>
         </div>
         <div class="pick-footer">
           <span class="pick-recommend">推荐: ${pickLabel}</span>
@@ -285,28 +568,57 @@ function renderAllTable() {
 
 // 全量渲染函数
 function renderAll() {
-  renderCards();
-  renderStatsTable();
-  renderTopCards();
-  renderTopTable();
-  renderAllTable();
+  try {
+    renderCards();
+    renderStatsTable();
+    renderTopCards();
+    renderTopTable();
+    renderAllTable();
+    console.log('数据渲染完成', fullData);
+  } catch (error) {
+    console.error('渲染过程出错', error);
+    document.getElementById('meta').textContent = `数据渲染出错: ${error.message}`;
+  }
 }
 
 // 数据加载函数
 async function loadData() {
-  try {
-    const response = await fetch(DATA_PATH);
-    if (!response.ok) throw new Error('数据加载失败');
-    fullData = await response.json();
-    renderAll();
-  } catch (error) {
-    console.error('数据加载异常:', error);
-    document.getElementById('meta').textContent = '数据加载失败，请检查后端流水线是否正常执行';
+  console.log('开始加载数据，尝试路径:', DATA_PATHS);
+  let lastError = null;
+  
+  // 循环尝试所有兼容路径
+  for (const path of DATA_PATHS) {
+    try {
+      const response = await fetch(path);
+      if (!response.ok) {
+        throw new Error(`HTTP错误: ${response.status}`);
+      }
+      fullData = await response.json();
+      console.log('数据加载成功，路径:', path, fullData);
+      renderAll();
+      return;
+    } catch (error) {
+      console.warn(`路径${path}加载失败`, error);
+      lastError = error;
+      continue;
+    }
   }
+
+  // 所有路径都失败了
+  console.error('所有数据路径都加载失败', lastError);
+  document.getElementById('meta').textContent = `数据加载失败: ${lastError?.message || '未知错误'}`;
+  document.getElementById('top-cards').innerHTML = `
+    <div class="error-tip">
+      <strong>数据加载失败</strong><br/>
+      请确认后端流水线已正常执行，且site/data/picks.json文件已生成<br/>
+      错误详情: ${lastError?.message || '未知错误'}
+    </div>
+  `;
 }
 
 // 页面加载完成后执行
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('页面加载完成，开始加载数据');
   loadData();
   // 每5分钟自动刷新数据
   setInterval(loadData, 5 * 60 * 1000);
