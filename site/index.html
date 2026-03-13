@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>JCZQ Fusion Board</title>
+  <title>五大联赛AI预测看板</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -14,16 +14,16 @@
   <div class="wrap hero">
     <div class="hero-top">
       <div>
-        <div class="brand">JCZQ FUSION BOARD</div>
-        <div class="sub">500 + Okooo + API Sports + Football-Data + Odds + GPT/Gemini</div>
+        <div class="brand">五大联赛AI预测看板</div>
+        <div class="sub">API-Sports + Football-Data + The-Odds-API | 豆包AI多因子融合分析</div>
       </div>
       <button id="theme" class="btn">切换日/夜</button>
     </div>
-    <div id="meta" class="meta">加载中...</div>
+    <div id="meta" class="meta">数据加载中...</div>
     <div class="schedule">自动更新: 北京时间 09:30 / 21:30</div>
     <div class="cards">
       <div class="card"><div class="k">未来赛程</div><div id="k_fx" class="v">-</div></div>
-      <div class="card"><div class="k">综合推荐</div><div id="k_top" class="v">-</div></div>
+      <div class="card"><div class="k">精选推荐</div><div id="k_top" class="v">-</div></div>
       <div class="card"><div class="k">回测 ROI</div><div id="k_roi" class="v">-</div></div>
       <div class="card"><div class="k">命中率</div><div id="k_hit" class="v">-</div></div>
       <div class="card"><div class="k">平均 EV</div><div id="k_ev" class="v">-</div></div>
@@ -31,74 +31,286 @@
     </div>
   </div>
 </header>
-
 <main class="wrap">
   <section>
-    <h2>今日 4 场综合推荐</h2>
-    <div id="top-cards" class="pick-grid"></div>
+    <h2>今日综合推荐</h2>
+    <div id="top-cards" class="pick-grid">数据加载中...</div>
   </section>
-
   <section>
-    <h2>分析统计面板</h2>
+    <h2>模型统计面板</h2>
     <div class="table-wrap">
       <table id="stats">
         <thead><tr>
-          <th>项</th><th>值</th>
+          <th>统计项</th><th>数值</th>
         </tr></thead>
         <tbody>
-          <tr><td>使用比赛</td><td id="s_matches">-</td></tr>
-          <tr><td>投注次数</td><td id="s_bets">-</td></tr>
-          <tr><td>平均 EV</td><td id="s_ev">-</td></tr>
-          <tr><td>Logloss</td><td id="s_log">-</td></tr>
-          <tr><td>回测 ROI</td><td id="s_roi">-</td></tr>
+          <tr><td>分析比赛总数</td><td id="s_matches">-</td></tr>
+          <tr><td>有效投注次数</td><td id="s_bets">-</td></tr>
+          <tr><td>平均 EV 值</td><td id="s_ev">-</td></tr>
+          <tr><td>对数损失 Logloss</td><td id="s_log">-</td></tr>
+          <tr><td>历史回测 ROI</td><td id="s_roi">-</td></tr>
           <tr><td>回测命中率</td><td id="s_hit">-</td></tr>
+          <tr><td>赔率API状态</td><td id="s_odds">-</td></tr>
+          <tr><td>赛事API状态</td><td id="s_api">-</td></tr>
+          <tr><td>豆包AI状态</td><td id="s_llm">-</td></tr>
         </tbody>
       </table>
     </div>
   </section>
-
   <section>
-    <h2>Top Picks 明细</h2>
-    <div class="hint">赔率可用时展示 EV/Kelly；无赔率时仍保留模型概率与比分推演。</div>
+    <h2>精选推荐明细</h2>
+    <div class="hint">赔率可用时展示 EV/Kelly 投注价值；无赔率时仍保留模型概率与比分推演。</div>
     <div class="table-wrap">
       <table id="top">
         <thead><tr>
           <th>日期</th><th>联赛</th><th>主队</th><th>客队</th>
-          <th>推荐</th><th>评分</th><th>EV</th><th>Kelly</th>
-        <th>概率(融合)</th><th>模型概率</th><th>赔率(胜/平/负)</th>
+          <th>投注推荐</th><th>置信评分</th><th>EV值</th><th>Kelly比例</th>
+          <th>融合胜率(胜/平/负)</th><th>核心模型概率</th><th>实时赔率(胜/平/负)</th>
         </tr></thead>
-        <tbody></tbody>
+        <tbody id="top-tbody"></tbody>
       </table>
     </div>
   </section>
-
   <section>
-    <h2>全部竞彩分析</h2>
+    <h2>全量赛事分析</h2>
     <div class="table-wrap">
       <table id="all">
         <thead><tr>
           <th>日期</th><th>联赛</th><th>主队</th><th>客队</th>
-          <th>xG(主/客)</th><th>概率(融合)</th><th>模型概率</th><th>最可能比分</th><th>状态</th><th>理由</th>
+          <th>xG(主/客)</th><th>融合胜率(胜/平/负)</th><th>模型权重占比</th><th>最可能比分</th><th>状态</th><th>分析理由</th>
         </tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
-  <section>
-    <h2>500 体彩抓取快照</h2>
-    <div class="hint">当 500 不可达时会自动启用 API-Football / Football-Data 补充赛程。</div>
-    <div class="table-wrap">
-      <table id="jczq">
-        <thead><tr>
-          <th>联赛</th><th>时间</th><th>主队</th><th>客队</th><th>胜</th><th>平</th><th>负</th><th>让球</th>
-        </tr></thead>
-        <tbody></tbody>
+        <tbody id="all-tbody"></tbody>
       </table>
     </div>
   </section>
 </main>
+<footer class="wrap footer">⚠️ 本系统仅供足球赛事分析与学习研究使用，所有内容不构成任何投注建议与投资指导。体育投注存在风险，请遵守国家法律法规，理性决策，远离非法赌博。</footer>
 
-<footer class="wrap footer">仅供学习研究，不构成任何投资或投注建议。</footer>
-<script src="app.js"></script>
+<script>
+// 全局数据存储
+let fullData = null;
+const DATA_PATH = './data/picks.json';
+
+// 日/夜主题切换
+const themeBtn = document.getElementById('theme');
+themeBtn.addEventListener('click', () => {
+  document.body.classList.toggle('light-theme');
+  const isLight = document.body.classList.contains('light-theme');
+  themeBtn.textContent = isLight ? '切换夜间' : '切换日/夜';
+});
+
+// 数字格式化工具
+function formatPercent(num) {
+  if (num === null || num === undefined || isNaN(num)) return '-';
+  return (num * 100).toFixed(1) + '%';
+}
+function formatNumber(num, fixed = 2) {
+  if (num === null || num === undefined || isNaN(num)) return '-';
+  return num.toFixed(fixed);
+}
+
+// 渲染顶部统计卡片
+function renderCards() {
+  if (!fullData) return;
+  const meta = fullData.meta || {};
+  const stats = fullData.stats || {};
+  const backtest = stats.backtest || {};
+
+  document.getElementById('k_fx').textContent = stats.fixtures || 0;
+  document.getElementById('k_top').textContent = stats.top || 0;
+  document.getElementById('k_roi').textContent = formatPercent(backtest.roi || 0);
+  document.getElementById('k_hit').textContent = formatPercent(backtest.hit_rate || 0);
+  document.getElementById('k_ev').textContent = formatPercent(backtest.avg_ev || 0);
+  document.getElementById('k_log').textContent = formatNumber(backtest.logloss || 0, 3);
+
+  // 更新元数据信息
+  const generateAt = meta.generated_at_utc || '';
+  const updateTime = generateAt ? new Date(generateAt).toLocaleString('zh-CN') : new Date().toLocaleString('zh-CN');
+  const leagueScope = meta.league_scope || '五大联赛 + 欧冠 + 欧联';
+  document.getElementById('meta').textContent = `数据更新时间: ${updateTime} | 赛事范围: ${leagueScope}`;
+}
+
+// 渲染统计表格
+function renderStatsTable() {
+  if (!fullData) return;
+  const stats = fullData.stats || {};
+  const backtest = stats.backtest || {};
+  const probe = fullData.meta?.connection_probe || {};
+  const llmUsage = fullData.meta?.llm?.usage || {};
+
+  document.getElementById('s_matches').textContent = backtest.matches_used || 0;
+  document.getElementById('s_bets').textContent = backtest.bets || 0;
+  document.getElementById('s_ev').textContent = formatPercent(backtest.avg_ev || 0);
+  document.getElementById('s_log').textContent = formatNumber(backtest.logloss || 0, 3);
+  document.getElementById('s_roi').textContent = formatPercent(backtest.roi || 0);
+  document.getElementById('s_hit').textContent = formatPercent(backtest.hit_rate || 0);
+  
+  // API状态渲染
+  const oddsOk = probe.odds_api?.ok;
+  const apiOk = probe.api_football?.ok;
+  const llmOk = probe.doubao_api?.ok;
+  document.getElementById('s_odds').textContent = oddsOk ? '正常' : '异常';
+  document.getElementById('s_odds').style.color = oddsOk ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('s_api').textContent = apiOk ? '正常' : '异常';
+  document.getElementById('s_api').style.color = apiOk ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('s_llm').textContent = llmOk ? `正常 (${llmUsage.doubao || 0}次调用)` : '异常';
+  document.getElementById('s_llm').style.color = llmOk ? 'var(--success)' : 'var(--danger)';
+}
+
+// 渲染顶部推荐卡片
+function renderTopCards() {
+  if (!fullData) return;
+  const topPicks = fullData.top_picks || [];
+  const container = document.getElementById('top-cards');
+
+  if (topPicks.length === 0) {
+    container.innerHTML = '<div class="empty-tip">暂无精选推荐赛事</div>';
+    return;
+  }
+
+  let html = '';
+  topPicks.forEach(pick => {
+    const winProb = formatPercent(pick.p_home);
+    const drawProb = formatPercent(pick.p_draw);
+    const lossProb = formatPercent(pick.p_away);
+    const ev = pick.ev ? formatPercent(pick.ev
+    const pickLabel = pick.pick || '无推荐';
+    const score = pick.most_likely_score || '1-1';
+
+    html += `
+      <div class="pick-card">
+        <div class="pick-header">
+          <span class="pick-league">${pick.league}</span>
+          <span class="pick-time">${pick.date} ${pick.time}</span>
+        </div>
+        <div class="pick-teams">
+         >vs</span>
+          <strong>${pick.away}</strong>
+        </div>
+        <div class="pick-score">预测比分: <code>${score}</code></div>
+        <div class="pick-prob">
+          <div class="prob-bar">
+            <div class="prob-win" style="width: ${pick.p_home * 100}%">胜 ${winProb}</div>
+            <div class="prob-draw" style="width: ${pick.p_draw * 100}%">平 ${drawProb}</div>
+            <div class="prob-loss" style="width: ${pick.p_away * 100}%">负 ${lossProb}</div>
+          </div>
+        </div>
+        <div class="pick-footer">
+          <span class="pick-recommend">推荐: ${pickLabel}</span>
+          <span class="pick-ev">EV: ${ev}</span>
+          <span class="pick-kelly">Kelly: ${kelly}</span>
+        </div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+// 渲染精选推荐明细表格
+function renderTopTable() {
+  if (!fullData) return;
+  const topPicks = fullData.top_picks || [];
+  const tbody = document.getElementById('top-tbody');
+
+  if (topPicks.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;">暂无数据</td></tr>';
+    return;
+  }
+
+  let html = '';
+  topPicks.forEach(pick => {
+    const fusionProb = `${formatPercent(pick.p_home)} / ${formatPercent(pick.p_draw)} / ${formatPercent(pick.p_away)}`;
+    const modelProb = pick.odds_prob ? `${formatPercent(pick.odds_prob[0])} / ${formatPercent(pick.odds_prob[1])} / ${formatPercent(pick.odds_prob[2])}` : '-';
+    const odds = pick.odds_win ? `${formatNumber(pick.odds_win)} / ${formatNumber(pick.odds_draw)} / ${formatNumber(pick.odds_lose)}` : '-';
+    const ev = pick.ev ? formatPercent(pick.ev) : '-';
+    const kelly = pick.kelly ? formatPercent(pick.kelly) : '-';
+    const score = pick.score ? formatNumber(pick.score, 2) : '-';
+
+    html += `
+      <tr>
+        <td>${pick.date}</td>
+        <td>${pick.league}</td>
+        <td><strong>${pick.home}</strong></td>
+        <td>${pick.away}</td>
+        <td>${pick.pick || '无推荐'}</td>
+        <td>${score}</td>
+        <td>${ev}</td>
+        <td>${kelly}</td>
+        <td>${fusionProb}</td>
+        <td>${modelProb}</td>
+        <td>${odds}</td>
+      </tr>
+    `;
+  });
+  tbody.innerHTML = html;
+}
+
+// 渲染全量赛事分析表格
+function renderAllTable() {
+  if (!fullData) return;
+  const allMatches = fullData.all || [];
+  const tbody = document.getElementById('all-tbody');
+
+  if (allMatches.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">暂无数据</td></tr>';
+    return;
+  }
+
+  let html = '';
+  allMatches.forEach(match => {
+    const fusionProb = `${formatPercent(match.p_home)} / ${formatPercent(match.p_draw)} / ${formatPercent(match.p_away)}`;
+    const xg = `${formatNumber(match.xg_home)} / ${formatNumber(match.xg_away)}`;
+    const weight = match.why?.split(';')[0]?.replace('融合权重 ', '') || '-';
+    const reason = match.why?.split('|')[0] || '-';
+    const status = match.label || '-';
+    const score = match.most_likely_score || '1-1';
+
+    html += `
+      <tr>
+        <td>${match.date}</td>
+        <td>${match.league}</td>
+        <td><strong>${match.home}</strong></td>
+        <td>${match.away}</td>
+        <td>${xg}</td>
+        <td>${fusionProb}</td>
+        <td>${weight}</td>
+        <td><code>${score}</code></td>
+        <td>${status}</td>
+        <td style="max-width: 300px; word-break: break-word;">${reason}</td>
+      </tr>
+    `;
+  });
+  tbody.innerHTML = html;
+}
+
+// 全量渲染函数
+function renderAll() {
+  renderCards();
+  renderStatsTable();
+  renderTopCards();
+  renderTopTable();
+  renderAllTable();
+}
+
+// 数据加载函数
+async function loadData() {
+  try {
+    const response = await fetch(DATA_PATH);
+    if (!response.ok) throw new Error('数据加载失败');
+    fullData = await response.json();
+    renderAll();
+  } catch (error) {
+    console.error('数据加载异常:', error);
+    document.getElementById('meta').textContent = '数据加载失败，请检查后端流水线是否正常执行';
+  }
+}
+
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', () => {
+  loadData();
+  // 每5分钟自动刷新数据
+  setInterval(loadData, 5 * 60 * 1000);
+});
+</script>
 </body>
 </html>
