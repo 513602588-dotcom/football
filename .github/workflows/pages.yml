@@ -5,7 +5,7 @@ on:
     branches: ["main"]
   workflow_dispatch:
   schedule:
-    # Beijing 09:30 and 21:30 => UTC 01:30 and 13:30
+    # Beijing 09:30 and 21:30 => UTC 01:30 and 13:30 原定时规则完全不动
     - cron: "30 1,13 * * *"
 
 permissions:
@@ -17,12 +17,15 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
+      # 赛事数据核心必填配置 原逻辑完全保留
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
       FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
       ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+      # 豆包专属配置 强制校验 彻底移除所有Gemini相关变量
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
       OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+      # 原有全局配置 完全不动
       ALLOW_GLOBAL_FIXTURE_FALLBACK: "true"
     steps:
       - uses: actions/checkout@v4
@@ -36,38 +39,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas numpy scipy scikit-learn requests beautifulsoup4 lxml python-dotenv
 
-      - name: Validate Required Secrets
+      - name: Validate Required Secrets（强制校验豆包，无有效密钥直接报错）
         run: |
           set -e
-          # 仅修改此处：移除GEMINI_API_KEY必填校验，其余原校验规则完全保留
+          # 核心修改：必填项锁定豆包API密钥，彻底移除Gemini校验
           required_vars=(API_FOOTBALL_KEY FOOTBALL_DATA_KEY ODDS_API_KEY OPENAI_API_KEY)
           for v in "${required_vars[@]}"; do
             val="${!v}"
             if [[ -z "$val" ]]; then
-              echo "ERROR: missing required secret $v"
+              echo "ERROR: 缺失必填配置 $v，豆包API密钥为必须项"
               exit 1
             fi
             if [[ "$val" =~ your_|_here|placeholder|changeme ]]; then
-              echo "ERROR: secret $v looks like a placeholder"
+              echo "ERROR: 配置 $v 为占位符，请填入有效豆包API密钥"
               exit 1
             fi
           done
 
+          # 豆包专属兜底：未配置时默认用官方稳定地址，彻底移除Gemini所有兜底逻辑
           if [[ -z "$OPENAI_BASE_URL" ]]; then
-            echo "OPENAI_BASE_URL not set, using default relay"
-            # 保留修复：替换失效地址，解决解析报错
+            echo "OPENAI_BASE_URL 未配置，自动使用豆包官方接口地址"
             echo "OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3" >> "$GITHUB_ENV"
           fi
-          if [[ -z "$GEMINI_BASE_URL" ]]; then
-            echo "GEMINI_BASE_URL not set, using default relay"
-            # 保留修复：替换失效地址，解决解析报错
-            echo "GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta" >> "$GITHUB_ENV"
-          fi
+          # 豆包专属兜底：未配置时默认用你指定的doubao-1.5-pro-32k
           if [[ -z "$OPENAI_MODEL" ]]; then
-            echo "OPENAI_MODEL=gpt-5.4,gpt-5.3" >> "$GITHUB_ENV"
-          fi
-          if [[ -z "$GEMINI_MODEL" ]]; then
-            echo "GEMINI_MODEL=gemini-3.1-pro,gemini-3.0-pro" >> "$GITHUB_ENV"
+            echo "OPENAI_MODEL 未配置，自动使用指定模型 doubao-1.5-pro-32k"
+            echo "OPENAI_MODEL=doubao-1.5-pro-32k" >> "$GITHUB_ENV"
           fi
 
       - name: Run Daily JCZQ Pipeline
