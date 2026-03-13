@@ -68,10 +68,8 @@ jobs:
 
       - name: Run Daily JCZQ Pipeline
         run: |
-          # 先单独运行爬虫，输出完整报错日志，排查问题
-          python run_collectors.py
-          # 再运行主管道，启用爬虫刷新
-          python -m src.daily_jczq_pipeline --run-scrapers
+          # 只读本地提交的竞彩数据，关闭GitHub爬虫
+          python -m src.daily_jczq_pipeline
 
       - uses: actions/upload-pages-artifact@v4
         with:
